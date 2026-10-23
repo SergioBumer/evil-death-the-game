@@ -825,11 +825,11 @@ function respawn(){
   if (cur === 6) {
     bossCarry = bossNextPct; bossNextPct = null;
     loadLevel(6); introT = 0; P.invuln = 1.5;
-    popup = { text:'¡RESURRECCIÓN!', sub:boss ? `El Silenciador vuelve con ${Math.round(boss.hp / boss.max * 100)}% de vida` : '', t:2.6, color:'#ff5a6e' };
+    popup = { text:'¡RESURRECCIÓN!', sub:boss ? `El Silenciador vuelve con ${Math.round(boss.hp / boss.max * 100)}% de vida` : '', t:2.6, color:'#ff5a6e', scale:1.5 };
     return;
   }
   P = newPlayer(checkpoint); P.invuln = 1.5; lastSafe = { ...checkpoint }; state = 'play'; showUI('play');
-  popup = { text:'¡RESURRECCIÓN!', t:2.6, color:'#ff5a6e' };
+  popup = { text:'¡RESURRECCIÓN!', t:2.6, color:'#ff5a6e', scale:1.5 };
 }
 
 function damage(e, n, dir){
@@ -1313,11 +1313,11 @@ function render(){
   drawEmbers(pal.acc);
   drawHUD(pal);
   if (popup && state === 'play') {
-    const py = 104 - Math.max(0, 1 - popup.t) * 10;
+    const k = popup.scale || 1, py = 104 * k - Math.max(0, 1 - popup.t) * 10;
     ctx.globalAlpha = Math.min(1, popup.t); ctx.textAlign = 'center';
-    ctx.font = '18px "Press Start 2P", monospace'; ctx.fillStyle = '#000'; ctx.fillText(popup.text, VW / 2 + 3, py + 3);
+    ctx.font = `${18 * k}px "Press Start 2P", monospace`; ctx.fillStyle = '#000'; ctx.fillText(popup.text, VW / 2 + 3 * k, py + 3 * k);
     ctx.fillStyle = popup.color || '#7fc4ff'; ctx.fillText(popup.text, VW / 2, py);
-    if (popup.sub) { ctx.font = '24px VT323, monospace'; ctx.fillStyle = '#e9dcc5'; ctx.fillText(popup.sub, VW / 2, py + 30); }
+    if (popup.sub) { ctx.font = `${24 * k}px VT323, monospace`; ctx.fillStyle = '#e9dcc5'; ctx.fillText(popup.sub, VW / 2, py + 30 * k); }
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   }
   if (flashT > 0) { ctx.globalAlpha = flashT; R(ctx, '#d4223a', 0, 0, VW, VH); ctx.globalAlpha = 1; }
