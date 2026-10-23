@@ -1086,17 +1086,23 @@ function drawPlayer(){
     } : null });
 }
 function drawTaunt(){
-  const age = TAUNT_SHOW - taunt.t, a = Math.min(1, age / .15, taunt.t / .35), pop = 1 + Math.max(0, .15 - age) * 1.6;
-  ctx.font = '50px VT323, monospace';
-  const bw = Math.min(VW - 80, 880), lines = wrapText(taunt.text, bw - 56), lh = 46;
-  const bh = 50 + lines.length * lh + 18, bx = VW / 2 - bw / 2, by = VH / 2 - bh / 2 - 20;
-  ctx.save(); ctx.globalAlpha = a; ctx.translate(VW / 2, by + bh / 2); ctx.scale(pop, pop); ctx.translate(-VW / 2, -(by + bh / 2));
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 6; ctx.strokeRect(bx - 3, by - 3, bw + 6, bh + 6); ctx.strokeStyle = '#ff5cc6'; ctx.lineWidth = 3; ctx.strokeRect(bx - 1.5, by - 1.5, bw + 3, bh + 3);
-  ctx.fillStyle = 'rgba(22,6,20,.82)'; ctx.fillRect(bx, by, bw, bh);
+  // Globo de diálogo pegado al Silenciador: lo sigue por la pantalla, así sale a su lado izquierdo o derecho.
+  const age = TAUNT_SHOW - taunt.t, a = Math.min(1, age / .15, taunt.t / .35), pop = 1 + Math.max(0, .15 - age) * 1.2;
+  const bsx = boss.x + boss.w / 2 - cam.x, bsy = boss.y + boss.h - cam.y;
+  ctx.font = '30px VT323, monospace';
+  const bw = Math.min(360, VW - 32), lines = wrapText(taunt.text, bw - 28), lh = 30;
+  const bh = 28 + lines.length * lh + 10;
+  const bx = Math.max(16, Math.min(VW - bw - 16, bsx - bw / 2)), by = bsy + 18;
+  const tx = Math.max(bx + 24, Math.min(bx + bw - 24, bsx));
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(tx, by); ctx.scale(pop, pop); ctx.translate(-tx, -by);
+  ctx.fillStyle = 'rgba(22,6,20,.84)'; ctx.strokeStyle = '#ff5cc6'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(tx - 10, by); ctx.lineTo(bsx, bsy + 2); ctx.lineTo(tx + 10, by); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
+  ctx.fillRect(tx - 9, by - 1, 18, 4);                                         // une la colita con el globo
   ctx.textAlign = 'center';
-  ctx.font = '13px "Press Start 2P", monospace'; ctx.fillStyle = '#ff5cc6'; ctx.fillText('EL SILENCIADOR:', VW / 2, by + 32);
-  ctx.font = '50px VT323, monospace';
-  lines.forEach((l, i) => { const y = by + 50 + (i + 1) * lh - 8; ctx.fillStyle = '#000'; ctx.fillText(l, VW / 2 + 3, y + 3); ctx.fillStyle = '#fff'; ctx.fillText(l, VW / 2, y); });
+  ctx.font = '9px "Press Start 2P", monospace'; ctx.fillStyle = '#ff5cc6'; ctx.fillText('EL SILENCIADOR:', bx + bw / 2, by + 18);
+  ctx.font = '30px VT323, monospace';
+  lines.forEach((l, i) => { const y = by + 28 + (i + 1) * lh - 4; ctx.fillStyle = '#000'; ctx.fillText(l, bx + bw / 2 + 2, y + 2); ctx.fillStyle = '#fff'; ctx.fillText(l, bx + bw / 2, y); });
   ctx.textAlign = 'left'; ctx.restore();
 }
 function wrapText(text, maxW){
