@@ -1158,7 +1158,7 @@ function drawEnding(){
   for (const ax of [40, 110, 830, 900]) { R(ctx, '#111', ax, ST - 60, 40, 60); R(ctx, '#c9b07a', ax + 2, ST - 56, 36, 5); }
   const xs = [190, 290, 390, 570, 670, 770];
   for (let i = 0; i < 6; i++) { ctx.save(); ctx.translate(xs[i], ST - 69); ctx.scale(1.5, 1.5); drawMusician(i, 0, 0, i < 3 ? 1 : -1, time + i, false); ctx.restore(); }
-  ctx.save(); ctx.translate(VW / 2, ST - 66 + Math.abs(Math.sin(time * 8)) * 3); ctx.scale(1.5, 1.5);
+  ctx.save(); ctx.translate(480, ST - 66 + Math.abs(Math.sin(time * 8)) * 3); ctx.scale(1.5, 1.5);
   drawPerson(ctx, 0, 0, 1, { leg:0, sway:Math.sin(time * 8) * 6, front:g => drawGuitar(g, 4, 20, -.4, '#b3122a') });
   ctx.restore(); ctx.restore();
   for (let i = 0; i < 70; i++) { const x = (i * 37) % VW, b = Math.abs(Math.sin(time * 6 + i)), y = ST + 50 + (i % 4) * 22 - b * 8; ctx.fillStyle = '#0a0608'; ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill(); R(ctx, '#0a0608', x - 16, y + 8, 32, 300); if (i % 5 === 0) R(ctx, '#0a0608', x + 6, y - 30 - b * 10, 4, 26); }
