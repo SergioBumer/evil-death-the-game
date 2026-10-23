@@ -1,0 +1,6 @@
+_to_delete
+src
+*.py
+README.md
+desplegar.cmd
+.env*
