@@ -133,6 +133,7 @@ body.isEnding #rotate{display:none!important}
         <span><kbd>←</kbd> <kbd>→</kbd></span><span>Correr (también A / D)</span>
         <span><kbd>Z</kbd> <kbd>ESPACIO</kbd></span><span>Saltar</span>
         <span><kbd>↑</kbd> <kbd>↓</kbd></span><span>Trepar / soltarse de un borde</span>
+        <span><kbd>↓</kbd></span><span>Agacharse (en el piso)</span>
         <span><kbd>X</kbd></span><span>Riff (ataque)</span>
         <span><kbd>C</kbd> <kbd>SHIFT</kbd></span><span>Dash</span>
         <span><kbd>V</kbd></span><span>Grito gutural</span>
@@ -569,6 +570,7 @@ function setSound(on, fromUser=true){
 }
 
 /* ============ ESTADO DEL MUNDO ============ */
+const CROUCH_DY = 16;
 const G = 1800, RUN = 220, JUMP = 620, DJUMP = 560, WJ_VY = 580, WJ_VX = 300, DASH_V = 560, DASH_T = .18, MAXFALL = 1100, BASE_LIFE = 4;
 const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
 const GRAB = new Set(['#', '=', 'B', 'O', 'o']);
@@ -744,7 +746,13 @@ function updatePlayer(dt){
   }
 
   // --- normal ---
-  if (p.wjLock <= 0) { const a = p.onGround ? 16 : 9; p.vx += (dir * RUN - p.vx) * Math.min(1, a * dt); if (!dir && Math.abs(p.vx) < 4) p.vx = 0; }
+  // Agacharse: con ↓ en el piso la caja de colisión baja de 44 a 28 px (esquiva disparos y pasa por huecos bajos).
+  const wantCrouch = keys.down && p.onGround;
+  if (wantCrouch && !p.crouch) { p.crouch = true; p.y += CROUCH_DY; p.h = 44 - CROUCH_DY; }
+  else if (!wantCrouch && p.crouch && !boxHitsSolid(p.x, p.y - CROUCH_DY, p.w, 44)) { p.crouch = false; p.y -= CROUCH_DY; p.h = 44; }
+  if (p.crouch) p.jbuf = 0;                                  // agachado no salta
+  const run = p.crouch ? RUN * .35 : RUN;
+  if (p.wjLock <= 0) { const a = p.onGround ? 16 : 9; p.vx += (dir * run - p.vx) * Math.min(1, a * dt); if (!dir && Math.abs(p.vx) < 4) p.vx = 0; }
   if (dir && p.wjLock <= 0) p.face = dir;
   p.wall = wallAt(p, 1) ? 1 : wallAt(p, -1) ? -1 : 0;
 
@@ -792,7 +800,7 @@ function updatePlayer(dt){
     if (has(4)) { projs.push({ x:p.x + p.w / 2 + p.face * 16, y:p.y + 16, vx:p.face * 560, life:.8 }); }
   }
   if (p.atkT > 0) {
-    const hb = { x:p.face > 0 ? p.x + p.w - 2 : p.x - 40, y:p.y + 2, w:42, h:36 };
+    const hb = { x:p.face > 0 ? p.x + p.w - 2 : p.x - 40, y:p.y + p.h - 42, w:42, h:36 };
     for (const e of ents) if ((e.t === 'E' || e.t === 'F') && !e.dead && !p.atkHit.has(e) && overlap(hb, e)) { p.atkHit.add(e); damage(e, 1, p.face); }
     if (boss && !boss.dead && !p.atkHit.has(boss) && overlap(hb, boss)) { p.atkHit.add(boss); bossDamage(.34); }
     eprojs = eprojs.filter(q => { if (overlap(hb, { x:q.x - 6, y:q.y - 6, w:12, h:12 })) { burst(q.x, q.y, '#ffd1ee', 6, 120); return false; } return true; });
@@ -1039,6 +1047,7 @@ function drawPerson(g, cx, top, face, o){
   const f = o.fat || 0, hl = o.hairLen === undefined ? 21 : o.hairLen;   // f>0 más ancho, f<0 más flaco; hl = largo del cabello
   const lw = 5 + (f > 0 ? 1 : f < 0 ? -1 : 0), lx = -5 - (lw - 5);        // ancho y posición de las piernas
   const armW = f < 0 ? 3 : 4;
+  if (pose === 'crouch') g.translate(0, 14);                                // todo el cuerpo baja; las piernas se doblan
   if (o.back) o.back(g);
   if (hl > 0) {
     const hx = -10 - sway + (hl < 16 ? 2 : 0);
@@ -1046,7 +1055,8 @@ function drawPerson(g, cx, top, face, o){
     if (o.sheen) { R(g, o.sheen, hx + 1, 4, 1, hl + Math.round(sway / 2) - 6); R(g, o.sheen, hx + 5, 3, 1, hl + Math.round(sway / 2) - 10); }
     if (o.hair2) { R(g, o.hair2, hx + 1, 2, 2, hl + Math.round(sway / 2) - 3); R(g, o.hair2, hx + 4, 4, 2, hl + Math.round(sway / 2) - 6); }
   }
-  if (pose === 'hang') { R(g, pants, lx, 27, lw, 12); R(g, pants, 1, 27, lw, 13); R(g, boot, lx - 1, 39, lw + 1, 5); R(g, boot, 1, 40, lw + 1, 4); }
+  if (pose === 'crouch') { const a = Math.round(lp * 2); R(g, pants, lx - 1, 25, lw, 5); R(g, boot, lx - 3 + a, 28, lw + 2, 2); R(g, pants, 1, 24, lw + 6, 5); R(g, pants, lw + 2, 24, lw, 6); R(g, boot, lw + 1 - a, 28, lw + 3, 2); }
+  else if (pose === 'hang') { R(g, pants, lx, 27, lw, 12); R(g, pants, 1, 27, lw, 13); R(g, boot, lx - 1, 39, lw + 1, 5); R(g, boot, 1, 40, lw + 1, 4); }
   else if (pose === 'air') { R(g, pants, lx - 2, 27, lw, 9); R(g, boot, lx - 3, 35, lw + 1, 4); R(g, pants, 1, 27, lw, 12); R(g, boot, 1, 38, lw + 2, 5); }
   else { const a = Math.round(lp * 4); R(g, pants, lx + a, 27, lw, 12); R(g, boot, lx - 1 + a, 39, lw + 2, 5); R(g, pants, 1 - a, 27, lw, 12); R(g, boot, -a, 39, lw + 2, 5); }
   const tx = -6 - Math.max(0, f) + (f < 0 ? 1 : 0), tw = 13 + 2 * Math.max(0, f) + (f < 0 ? -2 : 0);
@@ -1213,11 +1223,12 @@ function drawPlayer(){
   const p = P;
   if (p.invuln > 0 && Math.floor(p.invuln * 14) % 2 === 0) return;
   let pose = 'stand', leg = 0, sway = 0;
-  if (p.state === 'hang' || (p.state === 'climb' && p.climbT < .18)) pose = 'hang';
+  if (p.crouch) { pose = 'crouch'; leg = Math.abs(p.vx) > 10 ? Math.sin(p.anim * 10) : 0; }
+  else if (p.state === 'hang' || (p.state === 'climb' && p.climbT < .18)) pose = 'hang';
   else if (!p.onGround || p.state === 'dash') { pose = 'air'; sway = p.state === 'dash' ? 7 : 3; }
   else if (Math.abs(p.vx) > 20) { leg = Math.sin(p.anim * 16); sway = 2 + Math.abs(leg) * 2; }
   const atk = p.atkT > 0, k = atk ? 1 - p.atkT / .2 : 0;
-  drawPerson(ctx, p.x + p.w / 2, p.y, p.face, { pose, leg, sway,
+  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { pose, leg, sway,
     back: atk ? null : g => drawGuitar(g, -5, 20, -2.25, '#b3122a'),
     front: atk ? g => {
       drawGuitar(g, 6, 18, -1.9 + k * 2.6, '#b3122a');

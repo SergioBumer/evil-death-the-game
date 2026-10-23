@@ -18,7 +18,7 @@ El Silenciador, un productor que odia la distorsión, se robó el ruido de Bogot
 Mecánicas tipo Prince of Persia: agarrarse de bordes y trepar, pinchos, pisos que se caen, placas que abren rejas, daño por caídas altas y amplificadores como puntos de control.
 
 ## Controles
-- Teclado: ← → correr · Z/Espacio saltar · ↑ trepar · ↓ soltarse · X riff · C/Shift dash · V grito · P pausa · M sonido
+- Teclado: ← → correr · Z/Espacio saltar · ↑ trepar · ↓ soltarse del borde / agacharse en el piso · X riff · C/Shift dash · V grito · P pausa · M sonido
 - Celular: botones en pantalla (en horizontal)
 
 ## Publicación
