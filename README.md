@@ -21,21 +21,17 @@ Mecánicas tipo Prince of Persia: agarrarse de bordes y trepar, pinchos, pisos q
 - Teclado: ← → correr · Z/Espacio saltar · ↑ trepar · ↓ soltarse · X riff · C/Shift dash · V grito · P pausa · M sonido
 - Celular: botones en pantalla (en horizontal)
 
-## Desplegar en Vercel
-**Ya está preparado:** el proyecto `evil-death-gira-maldita` existe en tu cuenta de Vercel y esta carpeta ya está vinculada (`.vercel/project.json`). Solo haz doble clic en `desplegar.cmd` (la primera vez te pide iniciar sesión en Vercel en el navegador). Queda en https://evil-death-gira-maldita.vercel.app
+## Publicación
+El juego está en **https://evil-death.vercel.app**.
 
-**Opción A — GitHub (recomendada):**
-1. Sube esta carpeta a un repositorio.
-2. En vercel.com → *Add New → Project* → importa el repo.
-3. Framework preset: **Other**. Build command: vacío. Output directory: `.` (raíz). *Deploy*.
+El proyecto de Vercel está conectado a este repositorio: cada commit en `main` se publica solo, sin pasos manuales. Vercel sirve los archivos tal cual (preset **Other**, sin build command), así que `index.html` va armado dentro del repositorio.
 
-**Opción B — CLI:**
-```bash
-npm i -g vercel
-cd evil-death-juego
-vercel          # vista previa
-vercel --prod   # producción
-```
+Flujo para cada cambio:
+1. Edita `src/game.src.html` o `src/levels.py`.
+2. Reconstruye `index.html`: `python3 build.py`
+3. Haz commit de la fuente y del `index.html` juntos, un cambio por commit, y súbelo a `main`.
+
+`desplegar.cmd` sigue sirviendo para publicar a mano desde Windows con la CLI de Vercel, pero ya no hace falta.
 
 ## Música
 Todos los niveles suenan con **"Herencia maldita"** de Evil Death convertida a 8 bits (`music/herencia-maldita-8bit.mp3`): mono, muestreo a 11 kHz con retención (el "aliasing" de consola vieja) y 6 bits de resolución. La canción sigue sonando entre niveles. Si el archivo no carga, el juego usa el riff sintetizado de respaldo.
