@@ -86,6 +86,18 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
   background:var(--blood);border:2px solid #ff5a6e;padding:12px 14px;display:inline-block}
 .btnLink:focus-visible{outline:2px solid var(--bone);outline-offset:2px}
 #endOv{background:transparent;align-items:flex-end}
+.cloud{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 16px 11px;background:#fff;color:#1a0d10;
+  border:3px solid #111;border-radius:999px;box-shadow:0 0 0 2px #fff inset,0 6px 0 rgba(0,0,0,.35);text-transform:none;letter-spacing:0;cursor:pointer}
+.cloud::before,.cloud::after{content:'';position:absolute;background:#fff;border:3px solid #111;border-radius:50%}
+.cloud::before{width:16px;height:16px;right:22px;bottom:-14px}
+.cloud::after{width:9px;height:9px;right:12px;bottom:-25px}
+.cloud b{font-family:var(--f-pixel);font-size:11px;font-weight:400;color:#c2263b}
+.cloud small{font-family:var(--f-body);font-size:18px;color:#25d366;line-height:1}
+.cloud:hover,.cloud:focus-visible{border-color:#c2263b;outline:none}
+#mgrCloud{position:fixed;z-index:11}
+.mgrCard{grid-column:1 / -1;flex-direction:row;justify-content:center;gap:16px}
+.mgrInfo{display:flex;flex-direction:column;align-items:center;gap:22px}
+.mgrInfo .cloud::before{right:auto;left:-10px;bottom:6px}.mgrInfo .cloud::after{right:auto;left:-21px;bottom:2px}
 .endBand{display:none}
 .endLogo{display:none;width:min(300px,70vw);height:auto;flex-shrink:0;filter:drop-shadow(0 0 14px rgba(212,34,58,.75))}
 .endCard{display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(20,10,14,.7);border:1px solid var(--line);padding:6px 4px 8px;box-sizing:border-box}
@@ -210,6 +222,7 @@ body.isEnding #rotate{display:none!important}
     <p class="thSign">— Sergio, Rodrigo, Fabián, Andrés, Leo y César</p>
   </div>
   <div class="endBand" id="endBand" aria-label="Músicos rescatados"></div>
+  <button class="cloud" id="mgrCloud" hidden><b>Contrataciones</b><small>WhatsApp @lindalaelfa</small></button>
   <div class="panel card endPanel" id="endPanel">
     <p class="eyebrow endHead">Fin de la gira</p>
     <h2 class="endHead">¡Evil Death está completa!</h2>
@@ -291,6 +304,21 @@ const LEVEL_META = [
   { name:'El Gran Festival',     pal:{s1:'#05040a',s2:'#1d0b2b',stone:'#2c2433',hi:'#4b3d57',lo:'#120e17',acc:'#ff2f4f',far:'#120a1c',near:'#1a0f26'} },
 ];
 // "a Sergio, el guitarrista de backup" (sin nombre: "al guitarrista de backup")
+/* Manager de la banda: aparece en el escenario final con la nube de contrataciones. */
+const MANAGER = { role:'Manager', handle:'@lindalaelfa',
+  // número de WhatsApp en formato internacional sin "+" (ej. '573001234567'); vacío = se copia el usuario
+  whatsapp:'',
+  look:{ skin:BLANCO, hair:'#0c0a0e', hairLen:30, fat:-1, fem:true, shirt:'#2a0f1e', logo:'#ff5cc6', pants:'#15131a', skirt:'#0e0c10' } };
+function drawManager(g, ph){
+  g.globalAlpha = .22 + .1 * Math.sin(ph * 3); g.fillStyle = '#ff5cc6'; g.beginPath(); g.ellipse(0, 44, 30, 8, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+  drawPerson(g, 0, 2, -1, { ...MANAGER.look, leg:0, sway:Math.sin(ph * 2) * 1.5,
+    front:k => { R(k, '#1c1c22', 6, 14, 5, 8); R(k, '#7fd1ff', 7, 15, 3, 5); } });   // celular en la mano
+}
+function contactManager(){
+  if (MANAGER.whatsapp) { window.open(`https://wa.me/${MANAGER.whatsapp}?text=${encodeURIComponent('¡Hola! Quiero contratar a Evil Death 🤘')}`, '_blank', 'noopener'); return; }
+  const done = () => toast(`Escríbele a ${MANAGER.handle} en WhatsApp para contrataciones`);
+  try { navigator.clipboard.writeText(MANAGER.handle).then(() => toast(`Usuario ${MANAGER.handle} copiado: búscalo en WhatsApp`), done); } catch (e) { done(); }
+}
 const musicianName = i => BAND[i].name ? `a ${BAND[i].name}, ${BAND[i].title}` : `al ${BAND[i].title.slice(3)}`;
 
 /* ============ GUARDADO ============ */
@@ -1035,6 +1063,7 @@ function drawPerson(g, cx, top, face, o){
   if (f > 0) R(g, shirt, 6 + f, 18, f + 1, 10);                              // panza
   R(g, o.logo || '#c2263b', -2, 17, 6, 3); R(g, '#e8e0d8', -1, 18, 1, 1); R(g, '#e8e0d8', 2, 18, 1, 1);
   R(g, '#0b0a0c', tx, 26, tw + (f > 0 ? f + 1 : 0), 2); R(g, '#9aa0aa', 0, 26, 2, 2);
+  if (o.skirt && pose !== 'crouch') { R(g, o.skirt, tx - 1, 27, tw + 2, 4); R(g, o.skirt, tx - 2, 31, tw + 4, 3); }   // falda
   R(g, skin, -4, 3, 10, 10);
   if (hl === 0) { R(g, hair, -5, 0, 11, 3); R(g, hair, -5, 3, 2, 5); }        // pelo corto
   else {
@@ -1047,6 +1076,7 @@ function drawPerson(g, cx, top, face, o){
   R(g, '#111', 3, 6, 2, 2);
   if (o.glasses) R(g, '#0a0a0a', 0, 5, 7, 3);
   if (o.goatee) { R(g, o.beard, 1, 10, 5, 1); R(g, o.beard, 2, 11, 3, 4); }  // bigote + candado
+  else if (o.fem) { R(g, '#c2263b', 2, 11, 3, 1); R(g, '#111', 3, 5, 3, 1); R(g, hair, 4, 2, 3, 2); }   // labios, pestañas y flequillo
   else R(g, o.beard || '#3a2a22', 0, 10, 6, 3);
   const ax = 2 + Math.max(0, f);
   if (pose === 'hang') { R(g, shirt, 0, -2, armW, 16); R(g, skin, 0, -6, armW, 5); }
@@ -1295,12 +1325,15 @@ function drawEnding(){
     const x = VW / 2 - 360 + i * 180, sw = Math.sin(time * 1.3 + i) * 120;
     ctx.globalAlpha = .12; ctx.fillStyle = i % 2 ? '#ff2f4f' : '#ffe14d'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + sw - 70, 330); ctx.lineTo(x + sw + 70, 330); ctx.closePath(); ctx.fill();
   }
-  const ST = 250, ox = (VW - 960) / 2;
+  const ST = 250, ox = (VW - 960) / 2;   // los amplis de la derecha van juntos (822 y 866) para dejarle espacio a la manager
   ctx.globalAlpha = 1; ctx.save(); ctx.translate(ox, 0);
   R(ctx, '#1a1218', -ox, ST, VW, 40); R(ctx, pal.acc, -ox, ST, VW, 3);
-  for (const ax of [40, 110, 830, 900]) { R(ctx, '#111', ax, ST - 60, 40, 60); R(ctx, '#c9b07a', ax + 2, ST - 56, 36, 5); }
+  for (const ax of [40, 110, 822, 866]) { R(ctx, '#111', ax, ST - 60, 40, 60); R(ctx, '#c9b07a', ax + 2, ST - 56, 36, 5); }
   const xs = [190, 290, 390, 570, 670, 770];
   for (let i = 0; i < 6; i++) { ctx.save(); ctx.translate(xs[i], ST - 69); ctx.scale(1.5, 1.5); drawMusician(i, 0, 0, i < 3 ? 1 : -1, time + i, false); ctx.restore(); }
+  const mx = Math.max(934, Math.min(VW - ox - 60, 1010));   // a la derecha de los amplificadores
+  ctx.save(); ctx.translate(mx, ST - 69); ctx.scale(1.5, 1.5); drawManager(ctx, time); ctx.restore();
+  placeMgrCloud(mx + ox, ST - 69);
   ctx.save(); ctx.translate(480, ST - 66 + Math.abs(Math.sin(time * 8)) * 3); ctx.scale(1.5, 1.5);
   drawPerson(ctx, 0, 0, 1, { leg:0, sway:Math.sin(time * 8) * 6, front:g => drawGuitar(g, 4, 20, -.4, '#b3122a') });
   ctx.restore(); ctx.restore();
@@ -1358,7 +1391,7 @@ function render(){
 /* ============ UI ============ */
 const $ = id => document.getElementById(id);
 function showUI(mode){
-  $('menu').hidden = mode !== 'menu'; $('dialog').hidden = mode !== 'dialog'; $('pauseOv').hidden = mode !== 'paused'; $('endOv').hidden = mode !== 'ending'; document.body.classList.toggle('isEnding', mode === 'ending');
+  $('menu').hidden = mode !== 'menu'; $('dialog').hidden = mode !== 'dialog'; $('pauseOv').hidden = mode !== 'paused'; $('endOv').hidden = mode !== 'ending'; if (mode !== 'ending' && $('mgrCloud')) $('mgrCloud').hidden = true; document.body.classList.toggle('isEnding', mode === 'ending');
   $('topBtns').hidden = mode !== 'play';
   $('heroBar').hidden = mode !== 'play' || heroOptions().length < 2;
   if (mode !== 'play') hideHeroTip();
@@ -1419,6 +1452,14 @@ function placeThanks(){
   if (endColumn.matches) $('endLogo').after(t); else $('endDuo').prepend(t);   // computador: lado a lado con el Evil Fest
 }
 endColumn.addEventListener?.('change', placeThanks);
+function placeMgrCloud(x, y){
+  const c = $('mgrCloud'); if (!c) return;
+  if (endColumn.matches || state !== 'ending') { c.hidden = true; return; }
+  const r = cv.getBoundingClientRect(), k = r.width / VW;
+  c.hidden = false;
+  c.style.left = Math.round(Math.max(8, Math.min(innerWidth - c.offsetWidth - 8, r.left + x * k - c.offsetWidth + 34 * k))) + 'px';
+  c.style.top = Math.round(r.top + y * k - c.offsetHeight - 4) + 'px';
+}
 function buildEndBand(){
   placeThanks();
   if (!$('endLogo').src) $('endLogo').src = $('logo').src;
@@ -1429,10 +1470,20 @@ function buildEndBand(){
     const t = document.createElement('span'); t.textContent = BAND[i].name ? `${BAND[i].name} · ${BAND[i].role}` : BAND[i].role;
     card.append(c, t); box.append(card);
   }
+  const mc = document.createElement('div'); mc.className = 'endCard mgrCard';
+  const c = document.createElement('canvas'); c.width = 240; c.height = 180; c.className = 'mgrCv';
+  const info = document.createElement('div'); info.className = 'mgrInfo';
+  info.innerHTML = '<span>Manager · ' + MANAGER.handle + '</span>';
+  const b = document.createElement('button'); b.className = 'cloud'; b.innerHTML = '<b>Contrataciones</b><small>WhatsApp ' + MANAGER.handle + '</small>';
+  b.addEventListener('click', contactManager); info.prepend(b);
+  mc.append(c, info); box.append(mc);
 }
 function drawEndBand(){
   const box = $('endBand'); if (!box.childElementCount || box.offsetParent === null) return;
-  [...box.querySelectorAll('canvas')].forEach((c, i) => {
+  const mcv = box.querySelector('.mgrCv');
+  if (mcv) { const g = mcv.getContext('2d'); g.imageSmoothingEnabled = false; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 240, 180);
+    g.setTransform(3, 0, 0, 3, 120, 24); drawManager(g, time); }
+  [...box.querySelectorAll('canvas:not(.mgrCv)')].forEach((c, i) => {
     const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height);
     const gr = g.createRadialGradient(120, 120, 10, 120, 110, 120); gr.addColorStop(0, '#3a0f18'); gr.addColorStop(1, 'rgba(0,0,0,0)');
@@ -1470,6 +1521,7 @@ async function shareGame(where){
   try { await navigator.clipboard.writeText(`${text} ${GAME_URL}`); toast('¡Enlace copiado! Pégalo en tus redes o en WhatsApp'); return; } catch (e) {}
   window.open('https://wa.me/?text=' + encodeURIComponent(`${text} ${GAME_URL}`), '_blank', 'noopener');
 }
+$('mgrCloud').addEventListener('click', contactManager);
 document.querySelectorAll('[data-share]').forEach(b => b.addEventListener('click', () => shareGame(b.dataset.share)));
 $('rDismiss').onclick = () => document.body.classList.add('dismissRotate');
 document.addEventListener('pointerdown', initAudio, { once:false, passive:true });
