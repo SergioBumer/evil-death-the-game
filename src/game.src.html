@@ -87,6 +87,10 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
 body.isEnding #rotate{display:none!important}
 @media (max-height:430px){ .endPanel h2{font-size:24px} .ticket p{font-size:17px} .endPanel{gap:6px;padding:10px 14px} }
 .winsInfo{font-family:var(--f-pixel);font-size:10px;line-height:1.6;letter-spacing:.06em;color:#ffb347;margin:0}
+.btnShare{background:#ffb347;border-color:#ffd08a;color:#1a0d05}
+.shareCta{font-size:20px;margin:0 auto;color:var(--bone)}
+#toast{position:fixed;z-index:30;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1d1317;border:2px solid #ffb347;
+  color:var(--bone);font-family:var(--f-pixel);font-size:10px;letter-spacing:.06em;padding:12px 14px;max-width:calc(100% - 32px);text-align:center}
 .menuSocial{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
 .menuSocial span{font-size:19px}
 #heroBar{position:fixed;z-index:8;display:flex;gap:4px;left:calc(10px + env(safe-area-inset-left,0px));top:60px}
@@ -144,7 +148,10 @@ body.isEnding #rotate{display:none!important}
     </details>
     <div class="menuSocial">
       <span class="muted">Evil Death en TikTok, Instagram, X, Facebook y Threads</span>
-      <a class="btnLink" href="https://linktr.ee/evildeathofficial" target="_blank" rel="noopener">Síguenos en redes</a>
+      <div class="row">
+        <button class="btnShare" data-share="menu">Compartir el juego</button>
+        <a class="btnLink" href="https://linktr.ee/evildeathofficial" target="_blank" rel="noopener">Síguenos en redes</a>
+      </div>
     </div>
   </div>
 </div>
@@ -169,6 +176,8 @@ body.isEnding #rotate{display:none!important}
       <button id="pRestart">Reiniciar nivel</button>
       <button id="pMenu">Menú</button>
     </div>
+    <p class="shareCta">¿Te está gustando? Pásaselo a tu parche.</p>
+    <div class="row" style="justify-content:center"><button class="btnShare" data-share="pause">Compartir el juego</button></div>
   </div>
 </div>
 
@@ -185,6 +194,7 @@ body.isEnding #rotate{display:none!important}
     </div>
     <p class="winsInfo" id="winsEnd"></p>
     <div class="row" style="justify-content:center">
+      <button class="btnShare" data-share="win">Reta a tus amigos: comparte</button>
       <a class="btnLink primary" href="https://linktr.ee/evildeathofficial" target="_blank" rel="noopener">Sigue a Evil Death en redes</a>
       <button id="eMenu">Volver al menú</button>
     </div>
@@ -1382,6 +1392,27 @@ $('pResume').onclick = resume;
 $('pRestart').onclick = () => loadLevel(cur);
 $('pMenu').onclick = toMenu;
 $('eMenu').onclick = toMenu;
+/* Compartir: menú para compartir del celular; si no existe, copia el enlace; si tampoco, abre WhatsApp. */
+const GAME_URL = 'https://evil-death.vercel.app';
+function shareText(where){
+  if (where === 'win') return `¡Rescaté a Evil Death y le gané al Silenciador en La Gira Maldita! 🤘 ¿Te le mides?`;
+  return 'Juega La Gira Maldita, el videojuego de la banda de metal bogotana Evil Death 🤘';
+}
+let toastT = null;
+function toast(msg){
+  let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); document.body.append(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600);
+}
+async function shareGame(where){
+  const text = shareText(where);
+  if (navigator.share) {
+    try { await navigator.share({ title:'La Gira Maldita · Evil Death', text, url:GAME_URL }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(`${text} ${GAME_URL}`); toast('¡Enlace copiado! Pégalo en tus redes o en WhatsApp'); return; } catch (e) {}
+  window.open('https://wa.me/?text=' + encodeURIComponent(`${text} ${GAME_URL}`), '_blank', 'noopener');
+}
+document.querySelectorAll('[data-share]').forEach(b => b.addEventListener('click', () => shareGame(b.dataset.share)));
 $('rDismiss').onclick = () => document.body.classList.add('dismissRotate');
 document.addEventListener('pointerdown', initAudio, { once:false, passive:true });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { if (state === 'play') pause(); Music.stop(); } });

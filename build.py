@@ -27,6 +27,15 @@ out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else None
 if out: out.write_text(body, encoding='utf-8')  # versión sin <html>/<head> (vista previa)
 head = ('<!doctype html>\n<html lang="es">\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">\n'
-        '<meta name="description" content="La Gira Maldita: un plataformas de Evil Death. Rescata a los seis músicos y vence al Silenciador.">\n')
+        '<meta name="description" content="La Gira Maldita: un plataformas de Evil Death. Rescata a los seis músicos y vence al Silenciador.">\n'
+        # vista previa al compartir el enlace en WhatsApp, Instagram, X, Facebook...
+        '<meta property="og:type" content="website">\n'
+        '<meta property="og:url" content="https://evil-death.vercel.app/">\n'
+        '<meta property="og:title" content="La Gira Maldita · el videojuego de Evil Death">\n'
+        '<meta property="og:description" content="Rescata a los seis músicos de Evil Death, gana sus poderes y vence al Silenciador. Juega gratis desde el celular. 🤘">\n'
+        '<meta property="og:image" content="https://evil-death.vercel.app/og-image.png">\n'
+        '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
+        '<meta property="og:locale" content="es_CO">\n'
+        '<meta name="twitter:card" content="summary_large_image">\n')
 (ROOT / 'index.html').write_text(head + body + '\n</html>\n', encoding='utf-8')
 print('ok', len(body))
