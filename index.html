@@ -578,6 +578,9 @@ const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
 const GRAB = new Set(['#', '=', 'B', 'O', 'o']);
 const maxLife = () => BASE_LIFE + Object.keys(save.blue).length;
 let popup = null;
+/* Vidas al pasar de nivel: se conservan las que traías y se recupera solo LEVEL_HEAL. null = vidas completas. */
+const LEVEL_HEAL = 1;
+let levelLife = null;
 /* Burlas del Silenciador: desde la 4.ª victoria sobre él, cada 10 s lanza una frase al azar sin repetir. */
 const TAUNTS = [
   '¡El metal está muerto! Ahora solo suena reguetón.',
@@ -664,6 +667,7 @@ function loadLevel(i){
   }
   powers = Math.min(6, i); // cada nivel solo tiene los poderes ganados antes de él
   P = newPlayer(spawn); checkpoint = { ...spawn }; lastSafe = { ...spawn };
+  if (levelLife != null) P.life = Math.max(1, Math.min(maxLife(), levelLife));
   bg = makeBg(i); introT = 2.6; state = 'play'; taunt = null; tauntT = TAUNT_FIRST;
   cam.x = P.x - VW / 2; cam.y = P.y - VH / 2; clampCam();
   Synth.bpm = i === 6 ? 170 : 150;
@@ -857,7 +861,7 @@ function toSafe(){ Object.assign(P, { x:lastSafe.x, y:lastSafe.y, vx:0, vy:0, st
 function respawn(){
   if (cur === 6) {
     bossCarry = bossNextPct; bossNextPct = null;
-    loadLevel(6); introT = 0; P.invuln = 1.5;
+    loadLevel(6); introT = 0; P.invuln = 1.5; P.life = maxLife();
     popup = { text:'¡RESURRECCIÓN!', sub:boss ? `El Silenciador vuelve con ${Math.round(boss.hp / boss.max * 100)}% de vida` : '', t:2.6, color:'#ff5a6e', scale:1.5 };
     return;
   }
@@ -1406,13 +1410,13 @@ function buildMenu(){
     const b = document.createElement('button'); b.id = 'lvl' + i;
     b.disabled = i > save.unlocked;
     b.innerHTML = `${i + 1} · ${m.name}<span>${b.disabled ? 'Bloqueado' : (i < 6 ? BAND[i].role : 'Jefe final')}</span>`;
-    b.onclick = () => { initAudio(); loadLevel(i); };
+    b.onclick = () => { initAudio(); levelLife = null; loadLevel(i); };
     gridEl.appendChild(b);
   });
   const next = Math.min(save.unlocked, 6);
   $('bPlay').textContent = save.unlocked === 0 ? 'Jugar' : (save.unlocked >= 7 ? 'Revancha con el jefe' : `Continuar · nivel ${next + 1}`);
 }
-function startGame(){ initAudio(); loadLevel(Math.min(save.unlocked, 6)); }
+function startGame(){ initAudio(); levelLife = null; loadLevel(Math.min(save.unlocked, 6)); }
 function toMenu(){
   $('winsInfo').hidden = !save.wins;
   if (save.wins) $('winsInfo').textContent = `Giras completadas: ${save.wins} · Dificultad ${diffTxt(diff())} (vida de enemigos y jefe)`;
@@ -1432,7 +1436,11 @@ function reachMusician(){
   burst(P.x + P.w / 2, P.y, b.col, 30, 300);
   showUI('dialog');
 }
-function nextLevel(){ if (cur + 1 < LEVEL_DATA.length) loadLevel(cur + 1); else toMenu(); }
+function nextLevel(){
+  if (cur + 1 >= LEVEL_DATA.length) { toMenu(); return; }
+  levelLife = Math.min(maxLife(), P.life + LEVEL_HEAL);   // no se recargan todas las vidas
+  loadLevel(cur + 1);
+}
 function showEnding(){
   state = 'ending';
   save.wins = (save.wins || 0) + 1; persist();
