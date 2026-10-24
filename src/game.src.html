@@ -64,11 +64,11 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
 #dRole{font-family:var(--f-body);font-size:30px;line-height:1.05;letter-spacing:0;text-transform:none;color:var(--bone);text-wrap:balance}
 .power{font-family:var(--f-pixel);font-size:12px;color:var(--blood);letter-spacing:.08em}
 .endPanel{width:min(600px,100%);padding:14px 18px;gap:8px}
-.ticket{border:2px dashed var(--blood);background:rgba(212,34,58,.08);padding:10px 14px;display:flex;flex-direction:column;gap:6px;width:100%;box-sizing:border-box}
-.ticket p{font-size:20px;margin:0 auto}
-.ticket b{color:var(--bone)}
-.tkHead{font-family:var(--f-pixel);font-size:10px!important;letter-spacing:.12em;text-transform:uppercase;color:var(--blood)}
-.tkMeta{font-family:var(--f-pixel);font-size:9px!important;color:var(--muted);letter-spacing:.08em}
+.thanks{border:2px solid var(--blood);background:rgba(212,34,58,.08);padding:12px 16px;display:flex;flex-direction:column;gap:6px;width:100%;box-sizing:border-box}
+.thanks p{font-size:21px;margin:0 auto}
+.thHead{font-family:var(--f-pixel);font-size:10px!important;letter-spacing:.12em;text-transform:uppercase;color:var(--blood)}
+.thMain{font-family:var(--f-display);font-size:38px!important;line-height:1;color:var(--bone);text-shadow:2px 2px 0 #5a0d18,0 0 18px rgba(212,34,58,.5)}
+.thSign{font-size:18px!important;color:var(--muted)}
 .btnLink{font-family:var(--f-pixel);font-size:11px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:#fff;
   background:var(--blood);border:2px solid #ff5a6e;padding:12px 14px;display:inline-block}
 .btnLink:focus-visible{outline:2px solid var(--bone);outline-offset:2px}
@@ -85,7 +85,7 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
   #endOv .endPanel{max-height:none;flex-shrink:0;overflow:visible}
 }
 body.isEnding #rotate{display:none!important}
-@media (max-height:430px){ .endPanel h2{font-size:24px} .ticket p{font-size:17px} .endPanel{gap:6px;padding:10px 14px} }
+@media (max-height:430px){ .endPanel h2{font-size:24px} .thanks p{font-size:17px} .thMain{font-size:30px!important} .endPanel{gap:6px;padding:10px 14px} }
 .winsInfo{font-family:var(--f-pixel);font-size:10px;line-height:1.6;letter-spacing:.06em;color:#ffb347;margin:0}
 .btnShare{background:#ffb347;border-color:#ffd08a;color:#1a0d05}
 .shareCta{font-size:20px;margin:0 auto;color:var(--bone)}
@@ -194,10 +194,11 @@ body.isEnding #rotate{display:none!important}
   <div class="panel card endPanel">
     <p class="eyebrow">Fin de la gira</p>
     <h2>¡Evil Death está completa!</h2>
-    <div class="ticket">
-      <p class="tkHead">Boleta ganada · Evil Fest IV</p>
-      <p>Toma un pantallazo de esta pantalla y muéstralo para reclamar tu boleta al <b>Evil Fest IV</b>, este <b>30 de octubre</b> en <b>Kaoz Bar, Soacha</b>.</p>
-      <p class="tkMeta" id="tkMeta"></p>
+    <div class="thanks">
+      <p class="thHead">Mensaje de la banda</p>
+      <p class="thMain">¡Nos has salvado!</p>
+      <p>Gracias a ti el metal vuelve a sonar en Bogotá. Estamos eternamente agradecidos.</p>
+      <p class="thSign">— Sergio, Rodrigo, Fabián, Andrés, Leo y César</p>
     </div>
     <p class="winsInfo" id="winsEnd"></p>
     <div class="row" style="justify-content:center">
@@ -1387,9 +1388,6 @@ function showEnding(){
   state = 'ending';
   save.wins = (save.wins || 0) + 1; persist();
   $('winsEnd').textContent = `Gira maldita completada ${save.wins} ${save.wins === 1 ? 'vez' : 'veces'} · La próxima será más dura: enemigos y jefe con vida ${diffTxt(diff())}`;
-  const d = new Date(), pad = n => String(n).padStart(2, '0');
-  const code = 'ED4-' + (d.getTime() % 1679616).toString(36).toUpperCase().padStart(4, '0');
-  $('tkMeta').textContent = `Victoria: ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())} · Código ${code}`;
   buildEndBand();
   showUI('ending');
 }
