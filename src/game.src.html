@@ -96,6 +96,7 @@ body.isEnding #rotate{display:none!important}
 #heroBar{position:fixed;z-index:8;display:flex;flex-direction:column;gap:5px;left:calc(10px + env(safe-area-inset-left,0px));top:60px;
   padding:5px;background:rgba(10,6,8,.55);border:1px solid var(--line);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
 #heroBar::-webkit-scrollbar{display:none}
+#heroBar.portrait{flex-direction:row;transform:translateX(-50%);max-width:calc(100vw - 16px);overflow-x:auto;overflow-y:hidden}
 #heroTip{position:fixed;z-index:9;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:8px 12px;background:rgba(20,10,14,.95);
   border:2px solid var(--blood);box-shadow:0 0 0 3px #000;white-space:nowrap}
 #heroTip strong{font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1;color:var(--bone)}
@@ -444,7 +445,10 @@ function showHeroTip(h, brief){
   tip.innerHTML = ''; const n = document.createElement('strong'); n.textContent = heroName(h); const r = document.createElement('span'); r.textContent = heroRole(h);
   tip.append(n, r); tip.hidden = false;
   const rb = btn.getBoundingClientRect();
-  tip.style.left = Math.round(rb.right + 10) + 'px'; tip.style.top = Math.round(rb.top + rb.height / 2 - tip.offsetHeight / 2) + 'px';
+  if ($('heroBar').classList.contains('portrait')) {   // en vertical la etiqueta va encima del retrato, sin salirse de la pantalla
+    tip.style.left = Math.round(Math.max(8, Math.min(innerWidth - tip.offsetWidth - 8, rb.left + rb.width / 2 - tip.offsetWidth / 2))) + 'px';
+    tip.style.top = Math.round(Math.max(8, rb.top - tip.offsetHeight - 12)) + 'px';
+  } else { tip.style.left = Math.round(rb.right + 10) + 'px'; tip.style.top = Math.round(rb.top + rb.height / 2 - tip.offsetHeight / 2) + 'px'; }
   clearTimeout(heroTipT); if (brief) heroTipT = setTimeout(hideHeroTip, 1400);
 }
 function hideHeroTip(){ clearTimeout(heroTipT); $('heroTip').hidden = true; }
@@ -466,7 +470,8 @@ function buildHeroBar(){
     bar.append(b);
   }
   // si la columna se desplaza (celular), deja visible el personaje activo
-  const on = bar.querySelector('.on'); if (on) bar.scrollTop = on.offsetTop - bar.clientHeight / 2 + on.offsetHeight / 2;
+  const on = bar.querySelector('.on');
+  if (on) { bar.scrollTop = on.offsetTop - bar.clientHeight / 2 + on.offsetHeight / 2; bar.scrollLeft = on.offsetLeft - bar.clientWidth / 2 + on.offsetWidth / 2; }
 }
 /* Vidas al pasar de nivel: se conservan las que traías y se recupera solo LEVEL_HEAL. null = vidas completas. */
 const LEVEL_HEAL = 1;
@@ -1448,13 +1453,22 @@ function resize(){
   if (w !== VW) { VW = w; cv.width = VW; ctx.imageSmoothingEnabled = false; if (grid) clampCam(); }
   const s = Math.min(innerWidth / VW, innerHeight / VH);
   cv.style.width = Math.floor(VW * s) + 'px'; cv.style.height = Math.floor(VH * s) + 'px';
-  // los retratos van justo debajo de los corazones y del nombre del nivel, que se dibujan en el lienzo
-  const top = (innerHeight - Math.floor(VH * s)) / 2, left = (innerWidth - Math.floor(VW * s)) / 2;
-  const barTop = Math.round(top + 60 * s), bar = $('heroBar');
-  bar.style.top = barTop + 'px'; bar.style.left = `max(${Math.round(left + 14 * s)}px, env(safe-area-inset-left, 0px))`;
-  // columna vertical: en celular se detiene antes de la cruceta y, si no caben todos, se desplaza
-  const reserve = isTouch ? 150 : 12;
-  bar.style.maxHeight = Math.max(70, innerHeight - barTop - reserve) + 'px';
+  const top = (innerHeight - Math.floor(VH * s)) / 2, left = (innerWidth - Math.floor(VW * s)) / 2, bar = $('heroBar');
+  const portrait = isTouch && innerHeight > innerWidth;
+  bar.classList.toggle('portrait', portrait);
+  if (portrait) {
+    // celular en vertical: fila centrada encima del marco del juego, en el espacio libre de arriba
+    bar.style.maxHeight = ''; bar.style.left = '50%';
+    bar.style.top = Math.max(8, Math.round(top - 66 - 12)) + 'px';
+  } else {
+    // horizontal y computador: columna debajo de los corazones y del nombre del nivel, que se dibujan en el lienzo
+    const barTop = Math.round(top + 60 * s);
+    bar.style.top = barTop + 'px'; bar.style.left = `max(${Math.round(left + 14 * s)}px, env(safe-area-inset-left, 0px))`;
+    // en celular se detiene antes de la cruceta y, si no caben todos, se desplaza
+    const reserve = isTouch ? 150 : 12;
+    bar.style.maxHeight = Math.max(70, innerHeight - barTop - reserve) + 'px';
+  }
+  hideHeroTip();
 }
 addEventListener('resize', resize); resize();
 setSound(save.sound, false);
