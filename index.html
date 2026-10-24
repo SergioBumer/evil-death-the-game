@@ -110,6 +110,10 @@ body.isEnding #rotate{display:none!important}
 #heroBar{position:fixed;z-index:8;display:flex;flex-direction:column;gap:5px;left:calc(10px + env(safe-area-inset-left,0px));top:60px;
   padding:5px;background:rgba(10,6,8,.55);border:1px solid var(--line);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
 #heroBar::-webkit-scrollbar{display:none}
+#heroTip{position:fixed;z-index:9;pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:8px 12px;background:rgba(20,10,14,.95);
+  border:2px solid var(--blood);box-shadow:0 0 0 3px #000;white-space:nowrap}
+#heroTip strong{font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1;color:var(--bone)}
+#heroTip span{font-family:var(--f-pixel);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#ff5a6e}
 #heroBar button{flex:none;width:44px;height:54px;padding:0;display:flex;align-items:flex-end;justify-content:center;background:rgba(20,12,15,.7);border:2px solid var(--line)}
 #heroBar button.on{border-color:var(--bone);background:rgba(212,34,58,.45)}
 #heroBar canvas{width:38px;height:48px;image-rendering:pixelated;pointer-events:none}
@@ -218,6 +222,7 @@ body.isEnding #rotate{display:none!important}
 </div>
 
 <div id="heroBar" hidden aria-label="Cambiar de personaje"></div>
+<div id="heroTip" hidden aria-hidden="true"></div>
 
 <div id="topBtns" hidden>
   <button id="tSound" aria-label="Sonido">♪ ON</button>
@@ -617,18 +622,34 @@ function setHero(h, announce){
   if (announce) popup = { text:`¡AHORA ERES ${heroName(h).toUpperCase()}!`, t:2.2, color:h >= 0 ? BAND[h].col : '#ff5a6e' };
   SFX.check();
 }
-const heroName = h => h >= 0 ? (BAND[h].name || BAND[h].role) : 'el metalero';
+const heroName = h => h >= 0 ? (BAND[h].name || BAND[h].role) : 'El Metalero';
+const heroRole = h => h >= 0 ? BAND[h].role : 'Fan de Evil Death';
+// Etiqueta con nombre y rol al lado del retrato (al pasar el mouse o al tocarlo en el celular).
+let heroTipT = null;
+function showHeroTip(h, brief){
+  const btn = document.querySelector(`#heroBar [data-hero="${h}"]`), tip = $('heroTip'); if (!btn) return;
+  tip.innerHTML = ''; const n = document.createElement('strong'); n.textContent = heroName(h); const r = document.createElement('span'); r.textContent = heroRole(h);
+  tip.append(n, r); tip.hidden = false;
+  const rb = btn.getBoundingClientRect();
+  tip.style.left = Math.round(rb.right + 10) + 'px'; tip.style.top = Math.round(rb.top + rb.height / 2 - tip.offsetHeight / 2) + 'px';
+  clearTimeout(heroTipT); if (brief) heroTipT = setTimeout(hideHeroTip, 1400);
+}
+function hideHeroTip(){ clearTimeout(heroTipT); $('heroTip').hidden = true; }
 function buildHeroBar(){
+  hideHeroTip();
   const bar = $('heroBar'); bar.innerHTML = '';
   for (const h of heroOptions()) {
     const b = document.createElement('button'); b.className = h === hero ? 'on' : ''; b.setAttribute('aria-label', 'Jugar como ' + heroName(h));
-    b.title = heroName(h);
     const c = document.createElement('canvas'); c.width = 64; c.height = 80; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     g.setTransform(2, 0, 0, 2, 32, -4);
     const H = h >= 0 ? BAND[h] : null;
     drawPerson(g, 0, 0, 1, H ? { ...H.look, hair:H.hair, shirt:H.shirt, logo:H.col, scale:1 } : {});
     b.append(c);
-    b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); setHero(h, false); });
+    b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); setHero(h, false); showHeroTip(h, e.pointerType !== 'mouse'); });
+    b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') showHeroTip(h, false); });
+    b.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideHeroTip(); });
+    b.addEventListener('focus', () => showHeroTip(h, false)); b.addEventListener('blur', hideHeroTip);
+    b.dataset.hero = h;
     bar.append(b);
   }
   // si la columna se desplaza (celular), deja visible el personaje activo
@@ -1500,6 +1521,7 @@ function showUI(mode){
   $('menu').hidden = mode !== 'menu'; $('dialog').hidden = mode !== 'dialog'; $('pauseOv').hidden = mode !== 'paused'; $('endOv').hidden = mode !== 'ending'; document.body.classList.toggle('isEnding', mode === 'ending');
   $('topBtns').hidden = mode !== 'play';
   $('heroBar').hidden = mode !== 'play' || heroOptions().length < 2;
+  if (mode !== 'play') hideHeroTip();
   $('touch').hidden = !(isTouch && mode === 'play');
   document.querySelectorAll('#touch [data-need]').forEach(b => { b.style.visibility = has(+b.dataset.need) ? 'visible' : 'hidden'; });
   clearKeys();
