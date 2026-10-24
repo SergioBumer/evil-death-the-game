@@ -83,6 +83,19 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
 .thHead{font-family:var(--f-pixel);font-size:10px!important;letter-spacing:.12em;text-transform:uppercase;color:var(--blood)}
 .thMain{font-family:var(--f-display);font-size:38px!important;line-height:1;color:var(--bone);text-shadow:2px 2px 0 #5a0d18,0 0 18px rgba(212,34,58,.5)}
 .thSign{font-size:18px!important;color:var(--muted)}
+.fest{border:2px dashed #ffb347;background:rgba(255,179,71,.07);padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;box-sizing:border-box}
+.fest p{font-size:21px;margin:0 auto}
+.fest b{color:var(--bone)}
+.fest .thHead{color:#ffb347}
+.festName{font-family:var(--f-display);font-size:38px!important;line-height:1;color:#ffb347;text-shadow:2px 2px 0 #3a1c05}
+.festBtn{background:#ffb347;border-color:#ffd08a;color:#1a0d05;margin-top:4px}
+/* computador: el agradecimiento va arriba dentro del panel y reemplaza los títulos para no tapar a la banda */
+#endPanel:has(.thanks) .endHead{display:none}
+.endDuo{display:grid;grid-template-columns:1fr;gap:12px;width:100%}
+#endPanel:has(.thanks){width:min(980px,100%)}
+#endPanel .endDuo:has(.thanks){grid-template-columns:1fr 1fr}
+.endDuo > div{justify-content:center}
+#endOv > .thanks{width:min(600px,100%);flex-shrink:0;background:rgba(36,8,14,.92)}
 .btnLink{font-family:var(--f-pixel);font-size:11px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:#fff;
   background:var(--blood);border:2px solid #ff5a6e;padding:12px 14px;display:inline-block}
 .btnLink:focus-visible{outline:2px solid var(--bone);outline-offset:2px}
@@ -99,7 +112,7 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
   #endOv .endPanel{max-height:none;flex-shrink:0;overflow:visible}
 }
 body.isEnding #rotate{display:none!important}
-@media (max-height:430px){ .endPanel h2{font-size:24px} .thanks p{font-size:17px} .thMain{font-size:30px!important} .endPanel{gap:6px;padding:10px 14px} }
+@media (max-height:430px){ .endPanel h2{font-size:24px} .thanks p,.fest p{font-size:17px} .thMain,.festName{font-size:30px!important} .endPanel{gap:6px;padding:10px 14px} }
 .winsInfo{font-family:var(--f-pixel);font-size:10px;line-height:1.6;letter-spacing:.06em;color:#ffb347;margin:0}
 .btnShare{background:#ffb347;border-color:#ffd08a;color:#1a0d05}
 .shareCta{font-size:20px;margin:0 auto;color:var(--bone)}
@@ -204,15 +217,23 @@ body.isEnding #rotate{display:none!important}
 
 <div id="endOv" class="ov" hidden>
   <img class="endLogo" id="endLogo" alt="Evil Death" width="532" height="275">
+  <div class="thanks" id="endThanks">
+    <p class="thHead">Mensaje de la banda</p>
+    <p class="thMain">¡Nos has salvado!</p>
+    <p>Gracias a ti el metal vuelve a sonar en Bogotá. Estamos eternamente agradecidos.</p>
+    <p class="thSign">— Sergio, Rodrigo, Fabián, Andrés, Leo y César</p>
+  </div>
   <div class="endBand" id="endBand" aria-label="Músicos rescatados"></div>
-  <div class="panel card endPanel">
-    <p class="eyebrow">Fin de la gira</p>
-    <h2>¡Evil Death está completa!</h2>
-    <div class="thanks">
-      <p class="thHead">Mensaje de la banda</p>
-      <p class="thMain">¡Nos has salvado!</p>
-      <p>Gracias a ti el metal vuelve a sonar en Bogotá. Estamos eternamente agradecidos.</p>
-      <p class="thSign">— Sergio, Rodrigo, Fabián, Andrés, Leo y César</p>
+  <div class="panel card endPanel" id="endPanel">
+    <p class="eyebrow endHead">Fin de la gira</p>
+    <h2 class="endHead">¡Evil Death está completa!</h2>
+    <div class="endDuo" id="endDuo">
+    <div class="fest">
+      <p class="thHead">Ahora te toca a ti · ven a vernos en vivo</p>
+      <p class="festName">Evil Fest IV</p>
+      <p><b>Viernes 30 de octubre</b><br>7:00 p.&nbsp;m. · Kaoz Bar, Soacha</p>
+      <a class="btnLink festBtn" href="https://www.facebook.com/share/p/19BkkbNsxU/" target="_blank" rel="noopener">Ver el evento</a>
+    </div>
     </div>
     <p class="winsInfo" id="winsEnd"></p>
     <div class="row" style="justify-content:center">
@@ -1578,7 +1599,15 @@ function showEnding(){
   buildEndBand();
   showUI('ending');
 }
+// En celular (diseño en columna) el agradecimiento va debajo del logo; en computador, arriba dentro del panel.
+const endColumn = matchMedia('(pointer:coarse),(max-height:500px)');
+function placeThanks(){
+  const t = $('endThanks');
+  if (endColumn.matches) $('endLogo').after(t); else $('endDuo').prepend(t);   // computador: lado a lado con el Evil Fest
+}
+endColumn.addEventListener?.('change', placeThanks);
 function buildEndBand(){
+  placeThanks();
   if (!$('endLogo').src) $('endLogo').src = $('logo').src;
   const box = $('endBand'); if (box.childElementCount) return;
   for (let i = 0; i < 6; i++) {
