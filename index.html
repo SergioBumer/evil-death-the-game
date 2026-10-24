@@ -1677,7 +1677,17 @@ function placeThanks(){
 endColumn.addEventListener?.('change', placeThanks);
 function placeMgrCloud(x, y){
   const c = $('mgrCloud'); if (!c) return;
-  if (endColumn.matches || state !== 'ending') { c.hidden = true; return; }
+  if (state !== 'ending') { c.hidden = true; return; }
+  if (endColumn.matches) {   // celular: la nube flota encima del avatar de la manager (tarjeta de la banda)
+    const av = document.querySelector('#endBand .mgrCv'), a = av && av.offsetParent !== null ? av.getBoundingClientRect() : null;
+    if (!a || a.bottom < 0 || a.top > innerHeight) { c.hidden = true; return; }
+    const top = a.top - c.offsetHeight - 12;
+    if (top < 8) { c.hidden = true; return; }
+    c.hidden = false;
+    c.style.left = Math.round(Math.max(8, Math.min(innerWidth - c.offsetWidth - 8, a.left + a.width / 2 - c.offsetWidth / 2))) + 'px';
+    c.style.top = Math.round(top) + 'px';
+    return;
+  }
   const r = cv.getBoundingClientRect(), k = r.width / VW;
   c.hidden = false;
   c.style.left = Math.round(Math.max(8, Math.min(innerWidth - c.offsetWidth - 8, r.left + x * k - c.offsetWidth + 34 * k))) + 'px';
@@ -1697,9 +1707,7 @@ function buildEndBand(){
   const c = document.createElement('canvas'); c.width = 240; c.height = 180; c.className = 'mgrCv';
   const info = document.createElement('div'); info.className = 'mgrInfo';
   info.innerHTML = `<span>${MANAGER.name} · ${MANAGER.role}</span>`;
-  const b = document.createElement('button'); b.className = 'cloud'; b.innerHTML = `<b>Contrataciones</b><small>WhatsApp de ${MANAGER.name}</small>`;
-  b.addEventListener('click', contactManager); info.prepend(b);
-  mc.append(c, info); box.append(mc);
+  mc.append(c, info); box.append(mc);   // la nube (#mgrCloud) se ubica encima de este avatar en placeMgrCloud
 }
 function drawEndBand(){
   const box = $('endBand'); if (!box.childElementCount || box.offsetParent === null) return;
