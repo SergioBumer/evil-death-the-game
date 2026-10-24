@@ -95,7 +95,9 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
 .cloud small{font-family:var(--f-body);font-size:18px;color:#25d366;line-height:1}
 .cloud:hover,.cloud:focus-visible{border-color:#c2263b;outline:none}
 #mgrCloud{position:fixed;z-index:11}
-.mgrCard{grid-column:1 / -1;flex-direction:row;justify-content:center;gap:16px}
+.mgrCard{grid-column:1 / -1;flex-direction:column;justify-content:center;gap:4px;padding-top:10px}
+.mgrCard .cloud{margin-bottom:14px}
+.mgrCard .cloud::before{right:auto;left:calc(50% + 8px);bottom:-14px}.mgrCard .cloud::after{right:auto;left:calc(50% + 2px);bottom:-25px}
 .mgrInfo{display:flex;flex-direction:column;align-items:center;gap:22px}
 .mgrInfo .cloud::before{right:auto;left:-10px;bottom:6px}.mgrInfo .cloud::after{right:auto;left:-21px;bottom:2px}
 .endBand{display:none}
@@ -1492,16 +1494,7 @@ endColumn.addEventListener?.('change', placeThanks);
 function placeMgrCloud(x, y){
   const c = $('mgrCloud'); if (!c) return;
   if (state !== 'ending') { c.hidden = true; return; }
-  if (endColumn.matches) {   // celular: la nube flota encima del avatar de la manager (tarjeta de la banda)
-    const av = document.querySelector('#endBand .mgrCv'), a = av && av.offsetParent !== null ? av.getBoundingClientRect() : null;
-    if (!a || a.bottom < 0 || a.top > innerHeight) { c.hidden = true; return; }
-    const top = a.top - c.offsetHeight - 12;
-    if (top < 8) { c.hidden = true; return; }
-    c.hidden = false;
-    c.style.left = Math.round(Math.max(8, Math.min(innerWidth - c.offsetWidth - 8, a.left + a.width / 2 - c.offsetWidth / 2))) + 'px';
-    c.style.top = Math.round(top) + 'px';
-    return;
-  }
+  if (endColumn.matches) { c.hidden = true; return; }   // celular: la nube va dentro de la tarjeta de la manager (buildEndBand)
   const r = cv.getBoundingClientRect(), k = r.width / VW;
   c.hidden = false;
   c.style.left = Math.round(Math.max(8, Math.min(innerWidth - c.offsetWidth - 8, r.left + x * k - c.offsetWidth + 34 * k))) + 'px';
@@ -1521,7 +1514,11 @@ function buildEndBand(){
   const c = document.createElement('canvas'); c.width = 240; c.height = 180; c.className = 'mgrCv';
   const info = document.createElement('div'); info.className = 'mgrInfo';
   info.innerHTML = `<span>${MANAGER.name} · ${MANAGER.role}</span>`;
-  mc.append(c, info); box.append(mc);   // la nube (#mgrCloud) se ubica encima de este avatar en placeMgrCloud
+  // Celular: la nube va dentro de la tarjeta, encima del avatar, sin taparle nada a las demás tarjetas.
+  const b = document.createElement('button'); b.className = 'cloud';
+  b.setAttribute('aria-label', $('mgrCloud').getAttribute('aria-label'));
+  b.innerHTML = $('mgrCloud').innerHTML; b.addEventListener('click', contactManager);
+  mc.append(b, c, info); box.append(mc);
 }
 function drawEndBand(){
   const box = $('endBand'); if (!box.childElementCount || box.offsetParent === null) return;
