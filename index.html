@@ -66,6 +66,7 @@ kbd{font-family:var(--f-pixel);font-size:9px;border:1px solid var(--line);paddin
 .card{align-items:center;text-align:center}
 .card p{margin-inline:auto}
 #itemCv{width:96px;height:96px;image-rendering:pixelated;background:radial-gradient(circle,#3a0f18 0,transparent 70%)}
+#dRole{font-family:var(--f-body);font-size:30px;line-height:1.05;letter-spacing:0;text-transform:none;color:var(--bone);text-wrap:balance}
 .power{font-family:var(--f-pixel);font-size:12px;color:var(--blood);letter-spacing:.08em}
 .endPanel{width:min(600px,100%);padding:14px 18px;gap:8px}
 .ticket{border:2px dashed var(--blood);background:rgba(212,34,58,.08);padding:10px 14px;display:flex;flex-direction:column;gap:6px;width:100%;box-sizing:border-box}
@@ -398,17 +399,17 @@ ctx.imageSmoothingEnabled = false;
 /* ============ BANDA (edita aquí los nombres reales de los músicos) ============ */
 const MORENO = '#a86a44', BLANCO = '#f2dccb';
 const BAND = [
-  { role:'Guitarrista de backup', name:'', item:'Púa de plata',       power:'RIFF',             how:'Teclado: X · Celular: botón RIFF', desc:'Golpea con tu guitarra a los posers y a las notas desafinadas.', hair:'#111014', shirt:'#1a1a1f', inst:'guitar', col:'#e8e8f0',
+  { role:'Guitarrista de backup', name:'Sergio', title:'el guitarrista de backup', item:'Púa de plata',       power:'RIFF',             how:'Teclado: X · Celular: botón RIFF', desc:'Golpea con tu guitarra a los posers y a las notas desafinadas.', hair:'#111014', shirt:'#1a1a1f', inst:'guitar', col:'#e8e8f0',
     look:{ fat:5, hairLen:0, skin:MORENO } },
-  { role:'Baterista',             name:'', item:'Baquetas de acero',  power:'DOBLE SALTO',      how:'Pulsa SALTO otra vez en el aire',  desc:'Un redoble en el aire te impulsa otra vez hacia arriba.',         hair:'#111014', shirt:'#2a0f12', inst:'sticks', col:'#e0b04a',
+  { role:'Baterista',             name:'Rodrigo', title:'el baterista', item:'Baquetas de acero',  power:'DOBLE SALTO',      how:'Pulsa SALTO otra vez en el aire',  desc:'Un redoble en el aire te impulsa otra vez hacia arriba.',         hair:'#111014', shirt:'#2a0f12', inst:'sticks', col:'#e0b04a',
     look:{ scale:.95, fat:-1, hairLen:17, skin:MORENO } },
-  { role:'Guitarra líder I',      name:'', item:'Pedal de distorsión',power:'DASH',             how:'Teclado: C o SHIFT · Celular: DASH', desc:'Una embestida distorsionada que rompe muros agrietados.',      hair:'#5a2a0a', shirt:'#141216', inst:'guitar', col:'#ff7a1a',
+  { role:'Guitarra líder I',      name:'Fabián', title:'el guitarrista líder I', item:'Pedal de distorsión',power:'DASH',             how:'Teclado: C o SHIFT · Celular: DASH', desc:'Una embestida distorsionada que rompe muros agrietados.',      hair:'#5a2a0a', shirt:'#141216', inst:'guitar', col:'#ff7a1a',
     look:{ scale:.927, hairLen:0, goatee:true, beard:'#3a1c0a', skin:BLANCO } },
-  { role:'Bajista',               name:'', item:'Cuerda de bajo',     power:'SALTO DE PARED',   how:'En el aire, tocando un muro, pulsa SALTO', desc:'Rebotas en los muros como una cuerda tensa.',            hair:'#1b1b1b', shirt:'#101820', inst:'bass',   col:'#7fd1ff',
+  { role:'Bajista',               name:'Andrés "El Negro"', title:'el bajista', item:'Cuerda de bajo',     power:'SALTO DE PARED',   how:'En el aire, tocando un muro, pulsa SALTO', desc:'Rebotas en los muros como una cuerda tensa.',            hair:'#1b1b1b', shirt:'#101820', inst:'bass',   col:'#7fd1ff',
     look:{ scale:.9, hairLen:13, skin:MORENO } },
-  { role:'Guitarra líder II',     name:'', item:'Pedal wah-wah',      power:'RIFF A DISTANCIA', how:'Tu RIFF ahora dispara notas',      desc:'Las notas abren rejas al pegarle a los parlantes ◎.',            hair:'#050407', shirt:'#1d1024', inst:'guitar', col:'#b07cff',
+  { role:'Guitarra líder II',     name:'Leo', title:'el guitarrista líder II', item:'Pedal wah-wah',      power:'RIFF A DISTANCIA', how:'Tu RIFF ahora dispara notas',      desc:'Las notas abren rejas al pegarle a los parlantes ◎.',            hair:'#050407', shirt:'#1d1024', inst:'guitar', col:'#b07cff',
     look:{ scale:.95, hairLen:34, sheen:'#3a3846', entradas:true, skin:MORENO } },
-  { role:'Vocalista',             name:'', item:'Micrófono maldito',  power:'GRITO GUTURAL',    how:'Teclado: V · Celular: GRITO',      desc:'Una onda brutal que destruye todo a tu alrededor.',              hair:'#5a3a1e', shirt:'#200a0e', inst:'mic',    col:'#ff2f4f',
+  { role:'Vocalista',             name:'César', title:'el vocalista', item:'Micrófono maldito',  power:'GRITO GUTURAL',    how:'Teclado: V · Celular: GRITO',      desc:'Una onda brutal que destruye todo a tu alrededor.',              hair:'#5a3a1e', shirt:'#200a0e', inst:'mic',    col:'#ff2f4f',
     look:{ skin:BLANCO, hair2:'#dcb860', beard:BLANCO, hairLen:24 } },
 ];
 const LEVEL_META = [
@@ -420,7 +421,8 @@ const LEVEL_META = [
   { name:'La Catedral del Ruido',pal:{s1:'#0c0606',s2:'#300a14',stone:'#3d2a30',hi:'#64434c',lo:'#1c1215',acc:'#ff2f4f',far:'#1c0b10',near:'#260f16'} },
   { name:'El Gran Festival',     pal:{s1:'#05040a',s2:'#1d0b2b',stone:'#2c2433',hi:'#4b3d57',lo:'#120e17',acc:'#ff2f4f',far:'#120a1c',near:'#1a0f26'} },
 ];
-const musicianName = i => BAND[i].name ? `a ${BAND[i].name} (${BAND[i].role.toLowerCase()})` : `al ${BAND[i].role.toLowerCase()}`;
+// "a Sergio, el guitarrista de backup" (sin nombre: "al guitarrista de backup")
+const musicianName = i => BAND[i].name ? `a ${BAND[i].name}, ${BAND[i].title}` : `al ${BAND[i].title.slice(3)}`;
 
 /* ============ GUARDADO ============ */
 const save = { unlocked:0, sound:true, blue:{}, wins:0 };
@@ -1226,7 +1228,7 @@ function drawMusician(i, cx, top, face, ph, withItem, C = ctx){
     const iy = top - 22 + Math.sin(ph * 3) * 4;
     C.globalAlpha = .3; C.fillStyle = b.col; C.beginPath(); C.arc(cx, iy, 15, 0, Math.PI * 2); C.fill(); C.globalAlpha = 1;
     drawItem(C, i, cx, iy);
-    C.font = '8px "Press Start 2P", monospace'; C.textAlign = 'center'; C.fillStyle = '#efe6df'; C.fillText(b.role.toUpperCase(), cx, iy - 22); C.textAlign = 'left';
+    C.font = '8px "Press Start 2P", monospace'; C.textAlign = 'center'; C.fillStyle = '#efe6df'; C.fillText((b.name || b.role).toUpperCase(), cx, iy - 22); C.textAlign = 'left';
   }
 }
 function drawBoss(){

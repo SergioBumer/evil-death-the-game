@@ -46,7 +46,7 @@ python3 tools_8bit.py "mi-cancion.mp3" music/mi-cancion-8bit.mp3
 
 ## Personalizar
 - **Logo:** está en `assets/logo-evil-death.png` (blanco con fondo transparente). `build.py` lo incrusta dentro de `index.html`, así que el sitio sigue siendo un solo archivo.
-- **Nombres reales de los músicos:** en `src/game.src.html`, constante `BAND`, llena el campo `name` (ej. `name:'Andrés'`). El juego mostrará "Rescataste a Andrés (baterista)".
+- **Músicos:** en `src/game.src.html`, constante `BAND`: `name` es el nombre (Sergio, Rodrigo, Fabián, Andrés "El Negro", Leo, César) y `title` el rol con artículo. Al rescatarlo el juego muestra "Rescataste a Sergio, el guitarrista de backup".
 - **Niveles:** se diseñan en `src/levels.py` con funciones simples (`ground`, `rect`, `put`).
   Leyenda de tiles: `#` piedra · `=` piso suelto · `^` pinchos · `B` muro agrietado · `G` reja · `P` placa · `O` parlante (se activa con riff a distancia) · `S` inicio · `E` poser · `F` nota desafinada · `H` corazón rojo (cura) · `V` corazón azul (+1 vida máxima, una sola vez) · `C` amplificador (checkpoint) · `M` músico · `K` jefe.
 - Después de editar, reconstruye `index.html`:
