@@ -890,6 +890,20 @@ function bossDamage(n){
 }
 
 /* ============ ENEMIGOS, JEFE, PROYECTILES ============ */
+/* Los posers lanzan corazones a la altura del pecho: se esquivan agachándose y el riff los rompe. */
+const HEART_EVERY = 2.4, HEART_V = 190, HEART_RANGE = 300, HEART_Y = 36;
+function poserShoot(e, dt){
+  e.shootT = (e.shootT ?? 1 + Math.random()) - dt;
+  if (e.shootT > 0 || state !== 'play' || !P) return;
+  const feet = e.y + e.h, dx = P.x + P.w / 2 - (e.x + e.w / 2);
+  if (Math.abs(dx) > HEART_RANGE || Math.abs(P.y + P.h - feet) > 24) return;
+  const dir = Math.sign(dx) || 1, y = feet - HEART_Y;
+  for (let x = e.x + e.w / 2; Math.abs(x - (e.x + e.w / 2)) < Math.abs(dx); x += dir * 16)
+    if (isSolid(Math.floor(x / TS), Math.floor(y / TS))) { e.shootT = .5; return; }   // sin línea de tiro
+  e.shootT = HEART_EVERY;
+  eprojs.push({ x:e.x + e.w / 2 + dir * 14, y, vx:dir * HEART_V, vy:0, life:2.4, heart:true });
+  SFX.zap();
+}
 function updateEnts(dt){
   for (const e of ents) {
     if (e.dead) continue;
@@ -904,6 +918,7 @@ function updateEnts(dt){
         const ax = e.vx > 0 ? e.x + e.w + 2 : e.x - 2;
         if (!isSolid(Math.floor(ax / TS), Math.floor((e.y + e.h + 4) / TS))) e.vx = -e.vx * (near ? 0 : 1);
         if (e.vx && moveX(e, e.vx * dt)) e.vx = -(Math.sign(ax - e.x) || 1) * 60;
+        poserShoot(e, dt);
       }
       if (e.y > H * TS + 100) e.dead = true;
     } else if (e.t === 'F') {
@@ -1253,7 +1268,15 @@ function drawBoss(){
 }
 function drawProjs(){
   for (const q of projs) { ctx.fillStyle = BAND[4].col; ctx.beginPath(); ctx.ellipse(q.x - 2, q.y + 4, 5, 4, -.3, 0, Math.PI * 2); ctx.fill(); R(ctx, BAND[4].col, q.x + 2, q.y - 8, 2, 12); R(ctx, '#fff', q.x + 2, q.y - 8, 6, 2); }
-  for (const q of eprojs) { ctx.fillStyle = '#ff5cc6'; ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill(); R(ctx, '#fff', q.x - 2, q.y - 2, 3, 3); }
+  for (const q of eprojs) {
+    if (q.heart) {                                                                  // corazón del poser (12×10)
+      const x = Math.round(q.x) - 6, y = Math.round(q.y + Math.sin(q.life * 18) * 1.5) - 5;
+      R(ctx, '#ff4f9a', x + 1, y, 4, 2); R(ctx, '#ff4f9a', x + 7, y, 4, 2); R(ctx, '#ff4f9a', x, y + 2, 12, 3);
+      R(ctx, '#ff4f9a', x + 1, y + 5, 10, 2); R(ctx, '#ff4f9a', x + 3, y + 7, 6, 2); R(ctx, '#ff4f9a', x + 5, y + 9, 2, 1); R(ctx, '#fff', x + 2, y + 1, 2, 2);
+      continue;
+    }
+    ctx.fillStyle = '#ff5cc6'; ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill(); R(ctx, '#fff', q.x - 2, q.y - 2, 3, 3);
+  }
 }
 function drawPlayer(){
   const p = P;
