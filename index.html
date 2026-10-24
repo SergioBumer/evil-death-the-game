@@ -94,6 +94,10 @@ body.isEnding #rotate{display:none!important}
 .winsInfo{font-family:var(--f-pixel);font-size:10px;line-height:1.6;letter-spacing:.06em;color:#ffb347;margin:0}
 .menuSocial{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
 .menuSocial span{font-size:19px}
+#heroBar{position:fixed;z-index:8;display:flex;gap:4px;left:calc(10px + env(safe-area-inset-left,0px));top:60px}
+#heroBar button{width:36px;height:44px;padding:0;display:flex;align-items:flex-end;justify-content:center;background:rgba(20,12,15,.7);border:2px solid var(--line)}
+#heroBar button.on{border-color:var(--bone);background:rgba(212,34,58,.45)}
+#heroBar canvas{width:32px;height:40px;image-rendering:pixelated;pointer-events:none}
 #topBtns{position:fixed;z-index:8;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));display:flex;gap:6px}
 #topBtns button{padding:8px 10px;font-size:10px;background:rgba(20,12,15,.75)}
 #touch{position:fixed;inset:0;z-index:6;pointer-events:none}
@@ -138,6 +142,7 @@ body.isEnding #rotate{display:none!important}
         <span><kbd>X</kbd></span><span>Riff (ataque)</span>
         <span><kbd>C</kbd> <kbd>SHIFT</kbd></span><span>Dash</span>
         <span><kbd>V</kbd></span><span>Grito gutural</span>
+        <span><kbd>Q</kbd></span><span>Cambiar de personaje (o toca los retratos arriba a la izquierda)</span>
         <span><kbd>P</kbd> <kbd>ESC</kbd></span><span>Pausa · <kbd>M</kbd> sonido</span>
       </div>
       <p class="muted" style="margin-top:8px">En el celular aparecen botones en pantalla. Juega en horizontal.</p>
@@ -190,6 +195,8 @@ body.isEnding #rotate{display:none!important}
     </div>
   </div>
 </div>
+
+<div id="heroBar" hidden aria-label="Cambiar de personaje"></div>
 
 <div id="topBtns" hidden>
   <button id="tSound" aria-label="Sonido">♪ ON</button>
@@ -439,7 +446,7 @@ function persist(){ try { localStorage.setItem('evildeath_gira', JSON.stringify(
 const keys = {}, hit = {};
 const KEYMAP = { ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',
   KeyZ:'jump',Space:'jump',KeyK:'jump',KeyX:'attack',KeyJ:'attack',KeyC:'dash',ShiftLeft:'dash',ShiftRight:'dash',KeyL:'dash',
-  KeyV:'shout',KeyI:'shout',KeyP:'pause',Escape:'pause',Enter:'start',KeyM:'mute' };
+  KeyV:'shout',KeyI:'shout',KeyQ:'swap',KeyP:'pause',Escape:'pause',Enter:'start',KeyM:'mute' };
 addEventListener('keydown', e => { const k = KEYMAP[e.code]; if (!k) return; if (state !== 'menu' || k !== 'start' || true) e.preventDefault();
   if (!e.repeat) hit[k] = true; keys[k] = true; initAudio(); });
 addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { keys[k] = false; e.preventDefault(); } });
@@ -578,6 +585,32 @@ const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
 const GRAB = new Set(['#', '=', 'B', 'O', 'o']);
 const maxLife = () => BASE_LIFE + Object.keys(save.blue).length;
 let popup = null;
+/* Personaje jugable: -1 = el metalero; 0..5 = músico de BAND. Al rescatar a alguien pasas a ser él,
+   y arriba a la izquierda puedes cambiar entre el metalero y los músicos ya rescatados. null = elegir el último rescatado. */
+let hero = null;
+const heroOptions = () => [-1, ...Array.from({ length:powers }, (_, i) => i)];
+function setHero(h, announce){
+  if (!heroOptions().includes(h) || h === hero) return;
+  hero = h; buildHeroBar();
+  if (P) burst(P.x + P.w / 2, P.y + P.h / 2, h >= 0 ? BAND[h].col : '#d4223a', 16, 180);
+  if (announce) popup = { text:`¡AHORA ERES ${heroName(h).toUpperCase()}!`, t:2.2, color:h >= 0 ? BAND[h].col : '#ff5a6e' };
+  SFX.check();
+}
+const heroName = h => h >= 0 ? (BAND[h].name || BAND[h].role) : 'el metalero';
+function buildHeroBar(){
+  const bar = $('heroBar'); bar.innerHTML = '';
+  for (const h of heroOptions()) {
+    const b = document.createElement('button'); b.className = h === hero ? 'on' : ''; b.setAttribute('aria-label', 'Jugar como ' + heroName(h));
+    b.title = heroName(h);
+    const c = document.createElement('canvas'); c.width = 64; c.height = 80; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    g.setTransform(2, 0, 0, 2, 32, -4);
+    const H = h >= 0 ? BAND[h] : null;
+    drawPerson(g, 0, 0, 1, H ? { ...H.look, hair:H.hair, shirt:H.shirt, logo:H.col, scale:1 } : {});
+    b.append(c);
+    b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); setHero(h, false); });
+    bar.append(b);
+  }
+}
 /* Vidas al pasar de nivel: se conservan las que traías y se recupera solo LEVEL_HEAL. null = vidas completas. */
 const LEVEL_HEAL = 1;
 let levelLife = null;
@@ -666,6 +699,8 @@ function loadLevel(i){
     if (clear) grid[y][x] = '.';
   }
   powers = Math.min(6, i); // cada nivel solo tiene los poderes ganados antes de él
+  if (hero == null || hero >= powers) hero = powers - 1;   // por defecto, el último músico rescatado
+  buildHeroBar();
   P = newPlayer(spawn); checkpoint = { ...spawn }; lastSafe = { ...spawn };
   if (levelLife != null) P.life = Math.max(1, Math.min(maxLife(), levelLife));
   bg = makeBg(i); introT = 2.6; state = 'play'; taunt = null; tauntT = TAUNT_FIRST;
@@ -752,6 +787,7 @@ function updatePlayer(dt){
   p.atkCD -= dt; p.dashCD -= dt; p.shoutCD -= dt; p.grabCD -= dt; p.wjLock -= dt; p.atkT -= dt; p.coyote -= dt; p.jbuf -= dt;
   p.anim += dt;
   if (pressed('jump')) p.jbuf = .13;
+  if (pressed('swap')) { const opts = heroOptions(); setHero(opts[(opts.indexOf(hero) + 1) % opts.length], false); }
   const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
 
   if (p.state === 'hang') {
@@ -1278,6 +1314,15 @@ function drawProjs(){
     ctx.fillStyle = '#ff5cc6'; ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill(); R(ctx, '#fff', q.x - 2, q.y - 2, 3, 3);
   }
 }
+function drawWeapon(g, inst, a, col){
+  // arma en la mano durante el ataque: a = ángulo del golpe
+  if (inst === 'sticks') {
+    g.save(); g.translate(6, 18); g.rotate(a); g.strokeStyle = '#f3d9a0'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(20, -2); g.moveTo(0, 3); g.lineTo(18, 6); g.stroke(); g.restore();
+  } else if (inst === 'mic') {
+    g.save(); g.translate(6, 18); g.rotate(a); R(g, '#555', 0, -1, 30, 2); R(g, '#bfc4cc', 28, -3, 7, 6); g.restore();
+  } else drawGuitar(g, 6, 18, a, col, inst === 'bass' ? 32 : 24);
+}
 function drawPlayer(){
   const p = P;
   if (p.invuln > 0 && Math.floor(p.invuln * 14) % 2 === 0) return;
@@ -1287,12 +1332,17 @@ function drawPlayer(){
   else if (!p.onGround || p.state === 'dash') { pose = 'air'; sway = p.state === 'dash' ? 7 : 3; }
   else if (Math.abs(p.vx) > 20) { leg = Math.sin(p.anim * 16); sway = 2 + Math.abs(leg) * 2; }
   const atk = p.atkT > 0, k = atk ? 1 - p.atkT / .2 : 0;
-  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { pose, leg, sway,
-    back: atk ? null : g => drawGuitar(g, -5, 20, -2.25, '#b3122a'),
-    front: atk ? g => {
-      drawGuitar(g, 6, 18, -1.9 + k * 2.6, '#b3122a');
-      g.strokeStyle = 'rgba(233,220,197,' + (1 - k) * .8 + ')'; g.lineWidth = 3; g.beginPath(); g.arc(6, 18, 30, -1.6, -1.6 + k * 2.4); g.stroke();
-    } : null });
+  const H = hero >= 0 ? BAND[hero] : null, inst = H ? H.inst : 'guitar', col = H ? H.col : '#b3122a';
+  const look = H ? { ...H.look, hair:H.hair, shirt:H.shirt, logo:H.col } : {};
+  let back = null, front = null;
+  if (atk) front = g => {
+    drawWeapon(g, inst, -1.9 + k * 2.6, col);
+    g.strokeStyle = 'rgba(233,220,197,' + (1 - k) * .8 + ')'; g.lineWidth = 3; g.beginPath(); g.arc(6, 18, inst === 'mic' ? 34 : 30, -1.6, -1.6 + k * 2.4); g.stroke();
+  };
+  else if (inst === 'sticks') front = g => drawInstrument(g, H, p.anim);
+  else if (inst === 'mic') front = g => { R(g, '#555', 9, 6, 2, 24); R(g, '#bfc4cc', 7, 2, 6, 5); };   // pie de micrófono en la mano
+  else back = g => drawGuitar(g, -5, 20, -2.25, col, inst === 'bass' ? 28 : 24);
+  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { ...look, pose, leg, sway, armUp:inst === 'mic' && !atk && pose !== 'hang', back, front });
 }
 function drawTaunt(){
   // Globo de diálogo pegado al Silenciador: lo sigue por la pantalla, así sale a su lado izquierdo o derecho.
@@ -1425,6 +1475,7 @@ const $ = id => document.getElementById(id);
 function showUI(mode){
   $('menu').hidden = mode !== 'menu'; $('dialog').hidden = mode !== 'dialog'; $('pauseOv').hidden = mode !== 'paused'; $('endOv').hidden = mode !== 'ending'; document.body.classList.toggle('isEnding', mode === 'ending');
   $('topBtns').hidden = mode !== 'play';
+  $('heroBar').hidden = mode !== 'play' || heroOptions().length < 2;
   $('touch').hidden = !(isTouch && mode === 'play');
   document.querySelectorAll('#touch [data-need]').forEach(b => { b.style.visibility = has(+b.dataset.need) ? 'visible' : 'hidden'; });
   clearKeys();
@@ -1435,13 +1486,13 @@ function buildMenu(){
     const b = document.createElement('button'); b.id = 'lvl' + i;
     b.disabled = i > save.unlocked;
     b.innerHTML = `${i + 1} · ${m.name}<span>${b.disabled ? 'Bloqueado' : (i < 6 ? BAND[i].role : 'Jefe final')}</span>`;
-    b.onclick = () => { initAudio(); levelLife = null; loadLevel(i); };
+    b.onclick = () => { initAudio(); levelLife = null; hero = null; loadLevel(i); };
     gridEl.appendChild(b);
   });
   const next = Math.min(save.unlocked, 6);
   $('bPlay').textContent = save.unlocked === 0 ? 'Jugar' : (save.unlocked >= 7 ? 'Revancha con el jefe' : `Continuar · nivel ${next + 1}`);
 }
-function startGame(){ initAudio(); levelLife = null; loadLevel(Math.min(save.unlocked, 6)); }
+function startGame(){ initAudio(); levelLife = null; hero = null; loadLevel(Math.min(save.unlocked, 6)); }
 function toMenu(){
   $('winsInfo').hidden = !save.wins;
   if (save.wins) $('winsInfo').textContent = `Giras completadas: ${save.wins} · Dificultad ${diffTxt(diff())} (vida de enemigos y jefe)`;
@@ -1452,6 +1503,7 @@ function reachMusician(){
   const i = cur; state = 'dialog'; SFX.item();
   if (save.unlocked < i + 1) { save.unlocked = i + 1; persist(); }
   powers = Math.max(powers, i + 1);
+  setHero(i, false);
   const b = BAND[i];
   $('dRole').textContent = `Rescataste ${musicianName(i)}`;
   $('dItem').textContent = b.item; $('dPower').textContent = 'Nuevo poder: ' + b.power; $('dDesc').textContent = b.desc; $('dHow').textContent = b.how;
@@ -1465,6 +1517,7 @@ function nextLevel(){
   if (cur + 1 >= LEVEL_DATA.length) { toMenu(); return; }
   levelLife = Math.min(maxLife(), P.life + LEVEL_HEAL);   // no se recargan todas las vidas
   loadLevel(cur + 1);
+  if (hero >= 0) popup = { text:`¡AHORA ERES ${heroName(hero).toUpperCase()}!`, t:2.4, color:BAND[hero].col };
 }
 function showEnding(){
   state = 'ending';
@@ -1515,6 +1568,9 @@ function resize(){
   if (w !== VW) { VW = w; cv.width = VW; ctx.imageSmoothingEnabled = false; if (grid) clampCam(); }
   const s = Math.min(innerWidth / VW, innerHeight / VH);
   cv.style.width = Math.floor(VW * s) + 'px'; cv.style.height = Math.floor(VH * s) + 'px';
+  // los retratos van justo debajo de los corazones y del nombre del nivel, que se dibujan en el lienzo
+  const top = (innerHeight - Math.floor(VH * s)) / 2, left = (innerWidth - Math.floor(VW * s)) / 2;
+  $('heroBar').style.top = Math.round(top + 60 * s) + 'px'; $('heroBar').style.left = `max(${Math.round(left + 14 * s)}px, env(safe-area-inset-left, 0px))`;
 }
 addEventListener('resize', resize); resize();
 setSound(save.sound, false);
