@@ -713,7 +713,8 @@ function buildHeroBar(){
 /* Vidas al pasar de nivel: se conservan las que traías y se recupera solo LEVEL_HEAL. null = vidas completas. */
 const LEVEL_HEAL = 1;
 let levelLife = null;
-/* Burlas del Silenciador: desde la 4.ª victoria sobre él, cada 10 s lanza una frase al azar sin repetir. */
+/* Burlas del Silenciador: desde el primer intento, cada 10 s lanza una frase al azar sin repetir.
+   Cuando le queda poca vida (≤25%) se suman TAUNTS_LOW. */
 const TAUNTS = [
   '¡El metal está muerto! Ahora solo suena reguetón.',
   'Esas guitarras son puro ruido. ¡Viva el perreo!',
@@ -725,12 +726,47 @@ const TAUNTS = [
   'El Evil Fest se vacía. El parche está en el after urbano.',
   'Cambia la chaqueta de cuero por una de marca, parcero.',
   'Mil reproducciones el metal, un millón lo urbano.',
+  // Fase 1: ataques básicos
+  '¿Tanto ruido para decir que estás triste?',
+  'Tu género necesita tres guitarras para hacer lo que yo hago con un botón.',
+  '¿Eso es un solo de guitarra o una licuadora dañada?',
+  'Tú necesitas aprenderte 200 canciones. Yo necesito aprenderme un baile.',
+  'Tu cantante lleva 20 años practicando y todavía no se le entiende.',
+  '¿Por qué tu música suena como si el amplificador estuviera pidiendo auxilio?',
+  'Tanta técnica para que nadie sepa qué canción poner en la fiesta.',
+  'Tu género tiene más subgéneros que oyentes.',
+  // Fase 2: ataques críticos
+  'Tú pagas por clases de guitarra. Yo pago por un productor y quedo número uno.',
+  'Tu banda ensaya seis meses para tocar ante 40 personas. Yo lanzo un sencillo y hasta tu mamá lo baila.',
+  'Tu ídolo necesita un solo de 10 minutos para demostrar que sabe tocar. Yo necesito 15 segundos para volverme viral.',
+  'Tú escuchas música para escapar de la realidad. Yo hago música que pone a bailar a la realidad.',
+  'Tu género tiene 50 años de historia y todavía no supera los 80.',
+  'Tienes una guitarra de dos millones para tocar música que escucha tu grupo de WhatsApp.',
+  'Tu concierto necesita amplificadores gigantes para que la gente se mueva. El mío necesita un bajo y una pista.',
+  'Dices que mi música es comercial. Hermano, tú pagas para que la tuya suene.',
+  // Fase 3: ataques personales al metalero
+  '¿Te vistes de negro porque eres metalero o porque nunca superaste la adolescencia?',
+  'Tu outfit cuesta una fortuna y parece que lo compraste en el apocalipsis.',
+  'Llevas 15 años escuchando metal y todavía dices que el mejor álbum fue el de 1986.',
+  'Tu banda favorita sacó un disco nuevo y tú también finges que te gustó.',
+  'Dices que odias lo comercial, pero tienes una camiseta de Metallica fabricada en serie.',
+  'Tu mayor fantasía es que alguien te pregunte qué banda llevas en la camiseta.',
+  'No eres incomprendido, parcero. Es que llevas tres minutos de introducción.',
+  'Te sabes la discografía completa, pero no te sabes una canción para dedicarle a alguien.',
 ];
-const TAUNT_MIN_WINS = 4, TAUNT_EVERY = 10, TAUNT_SHOW = 5, TAUNT_FIRST = 3;
-let taunt = null, tauntT = TAUNT_FIRST, tauntBag = [], lastTaunt = '';
+const TAUNTS_LOW = [
+  '¡SUFRE, GUITARRISTA! ¡MI CANCIÓN MÁS TONTA TIENE MÁS REPRODUCCIONES QUE TU DISCO FAVORITO!',
+  '¡TU SOLO NO PUEDE COMPETIR CONTRA UN ESTRIBILLO QUE SE PEGA EN TRES SEGUNDOS!',
+  '¡HAS PERDIDO, METALERO! ¡AHORA MI PRODUCTOR VA A HACER UN REMIX DE TU DERROTA!',
+  '¡NO NECESITO UN BIS! ¡EL ALGORITMO YA DECIDIÓ QUE ME VAS A ESCUCHAR OTRA VEZ!',
+];
+const TAUNT_EVERY = 10, TAUNT_SHOW = 5, TAUNT_FIRST = 3, TAUNT_LOW_PCT = .25;
+let taunt = null, tauntT = TAUNT_FIRST, tauntBag = [], tauntLow = false, lastTaunt = '';
 function nextTaunt(){
-  if (!tauntBag.length) {
-    tauntBag = TAUNTS.slice();
+  const low = !!(boss && boss.hp <= boss.max * TAUNT_LOW_PCT);
+  if (!tauntBag.length || low !== tauntLow) {
+    tauntLow = low;
+    tauntBag = low ? TAUNTS.concat(TAUNTS_LOW) : TAUNTS.slice();
     for (let i = tauntBag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [tauntBag[i], tauntBag[j]] = [tauntBag[j], tauntBag[i]]; }
     if (tauntBag[tauntBag.length - 1] === lastTaunt) tauntBag.unshift(tauntBag.pop());
   }
@@ -1201,7 +1237,7 @@ function step(dt){
   if (state === 'play' || state === 'bossdown') updateCam(dt);
   shake = Math.max(0, shake - dt * 30); flashT = Math.max(0, flashT - dt);
   if (popup) { popup.t -= dt; if (popup.t <= 0) popup = null; }
-  if (state === 'play' && cur === 6 && boss && !boss.dead && save.wins >= TAUNT_MIN_WINS) {
+  if (state === 'play' && cur === 6 && boss && !boss.dead) {
     tauntT -= dt;
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
