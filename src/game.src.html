@@ -328,6 +328,7 @@ if (!save.blue || typeof save.blue !== 'object') save.blue = {};
 if (!Number.isFinite(save.wins) || save.wins < 0) save.wins = 0;
 /* Dificultad: cada gira completada sube 20% la vida de enemigos y jefe (máximo x3). */
 const DIFF_STEP = .2, DIFF_MAX = 3;
+const BOSS_HP = 6 * 1.2;   // vida base del jefe: +20% desde la primera gira
 const diff = () => Math.min(DIFF_MAX, 1 + save.wins * DIFF_STEP);
 const diffTxt = v => 'x' + v.toFixed(1).replace('.', ',');
 function persist(){ try { localStorage.setItem('evildeath_gira', JSON.stringify(save)); } catch(e) {} }
@@ -639,7 +640,7 @@ function loadLevel(i){
       case 'H': ents.push({ t:'H', x:px + 8, y:py + 8, w:16, h:16, ph:Math.random() * 6 }); break;
       case 'M': ents.push({ t:'M', x:px + 2, y:py + TS - 46, w:28, h:46, ph:0 }); break;
       case 'C': ents.push({ t:'C', x:px + 4, y:py + TS - 30, w:24, h:30, on:false }); break;
-      case 'K': boss = { x:px, y:py, w:84, h:96, hp:6 * diff(), max:6 * diff(), t:0, shootT:2.5, spawnT:6, hurt:0, dead:false };
+      case 'K': boss = { x:px, y:py, w:84, h:96, hp:BOSS_HP * diff(), max:BOSS_HP * diff(), t:0, shootT:2.5, spawnT:6, hurt:0, dead:false };
         if (bossCarry != null) { boss.hp = boss.max * bossCarry; bossCarry = null; }
         break;
       default: clear = false;
