@@ -858,14 +858,16 @@ function hurt(n, respawn, kdir){
   else { P.state = 'normal'; P.vy = -320; P.vx = (kdir || -P.face) * 240; P.wjLock = .25; }
 }
 function toSafe(){ Object.assign(P, { x:lastSafe.x, y:lastSafe.y, vx:0, vy:0, state:'normal', onGround:false }); }
+// Al morir se vuelve con las vidas por defecto (4), aunque los corazones azules hayan dado más espacios.
+const respawnLife = () => Math.min(maxLife(), BASE_LIFE);
 function respawn(){
   if (cur === 6) {
     bossCarry = bossNextPct; bossNextPct = null;
-    loadLevel(6); introT = 0; P.invuln = 1.5; P.life = maxLife();
+    loadLevel(6); introT = 0; P.invuln = 1.5; P.life = respawnLife();
     popup = { text:'¡RESURRECCIÓN!', sub:boss ? `El Silenciador vuelve con ${Math.round(boss.hp / boss.max * 100)}% de vida` : '', t:2.6, color:'#ff5a6e', scale:1.5 };
     return;
   }
-  P = newPlayer(checkpoint); P.invuln = 1.5; lastSafe = { ...checkpoint }; state = 'play'; showUI('play');
+  P = newPlayer(checkpoint); P.life = respawnLife(); P.invuln = 1.5; lastSafe = { ...checkpoint }; state = 'play'; showUI('play');
   popup = { text:'¡RESURRECCIÓN!', t:2.6, color:'#ff5a6e', scale:1.5 };
 }
 
