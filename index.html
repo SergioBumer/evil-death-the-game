@@ -107,10 +107,12 @@ body.isEnding #rotate{display:none!important}
   color:var(--bone);font-family:var(--f-pixel);font-size:10px;letter-spacing:.06em;padding:12px 14px;max-width:calc(100% - 32px);text-align:center}
 .menuSocial{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
 .menuSocial span{font-size:19px}
-#heroBar{position:fixed;z-index:8;display:flex;gap:4px;left:calc(10px + env(safe-area-inset-left,0px));top:60px}
-#heroBar button{width:36px;height:44px;padding:0;display:flex;align-items:flex-end;justify-content:center;background:rgba(20,12,15,.7);border:2px solid var(--line)}
+#heroBar{position:fixed;z-index:8;display:flex;flex-direction:column;gap:5px;left:calc(10px + env(safe-area-inset-left,0px));top:60px;
+  padding:5px;background:rgba(10,6,8,.55);border:1px solid var(--line);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+#heroBar::-webkit-scrollbar{display:none}
+#heroBar button{flex:none;width:44px;height:54px;padding:0;display:flex;align-items:flex-end;justify-content:center;background:rgba(20,12,15,.7);border:2px solid var(--line)}
 #heroBar button.on{border-color:var(--bone);background:rgba(212,34,58,.45)}
-#heroBar canvas{width:32px;height:40px;image-rendering:pixelated;pointer-events:none}
+#heroBar canvas{width:38px;height:48px;image-rendering:pixelated;pointer-events:none}
 #topBtns{position:fixed;z-index:8;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));display:flex;gap:6px}
 #topBtns button{padding:8px 10px;font-size:10px;background:rgba(20,12,15,.75)}
 #touch{position:fixed;inset:0;z-index:6;pointer-events:none}
@@ -629,6 +631,8 @@ function buildHeroBar(){
     b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); setHero(h, false); });
     bar.append(b);
   }
+  // si la columna se desplaza (celular), deja visible el personaje activo
+  const on = bar.querySelector('.on'); if (on) bar.scrollTop = on.offsetTop - bar.clientHeight / 2 + on.offsetHeight / 2;
 }
 /* Vidas al pasar de nivel: se conservan las que traías y se recupera solo LEVEL_HEAL. null = vidas completas. */
 const LEVEL_HEAL = 1;
@@ -1611,7 +1615,11 @@ function resize(){
   cv.style.width = Math.floor(VW * s) + 'px'; cv.style.height = Math.floor(VH * s) + 'px';
   // los retratos van justo debajo de los corazones y del nombre del nivel, que se dibujan en el lienzo
   const top = (innerHeight - Math.floor(VH * s)) / 2, left = (innerWidth - Math.floor(VW * s)) / 2;
-  $('heroBar').style.top = Math.round(top + 60 * s) + 'px'; $('heroBar').style.left = `max(${Math.round(left + 14 * s)}px, env(safe-area-inset-left, 0px))`;
+  const barTop = Math.round(top + 60 * s), bar = $('heroBar');
+  bar.style.top = barTop + 'px'; bar.style.left = `max(${Math.round(left + 14 * s)}px, env(safe-area-inset-left, 0px))`;
+  // columna vertical: en celular se detiene antes de la cruceta y, si no caben todos, se desplaza
+  const reserve = isTouch ? 150 : 12;
+  bar.style.maxHeight = Math.max(70, innerHeight - barTop - reserve) + 'px';
 }
 addEventListener('resize', resize); resize();
 setSound(save.sound, false);
