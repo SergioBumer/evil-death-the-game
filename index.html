@@ -236,7 +236,7 @@ body.isEnding #rotate{display:none!important}
     <p class="thSign">— Sergio, Rodrigo, Fabián, Andrés, Leo y César</p>
   </div>
   <div class="endBand" id="endBand" aria-label="Músicos rescatados"></div>
-  <button class="cloud" id="mgrCloud" hidden><b>Contrataciones</b><small>WhatsApp @lindalaelfa</small></button>
+  <button class="cloud" id="mgrCloud" hidden aria-label="Contrataciones: escribirle a Tatiana por WhatsApp"><b>Contrataciones</b><small>WhatsApp de Tatiana</small></button>
   <div class="panel card endPanel" id="endPanel">
     <p class="eyebrow endHead">Fin de la gira</p>
     <h2 class="endHead">¡Evil Death está completa!</h2>
@@ -492,9 +492,9 @@ const LEVEL_META = [
 ];
 // "a Sergio, el guitarrista de backup" (sin nombre: "al guitarrista de backup")
 /* Manager de la banda: aparece en el escenario final con la nube de contrataciones. */
-const MANAGER = { role:'Manager', handle:'@lindalaelfa',
+const MANAGER = { name:'Tatiana', role:'Manager', handle:'@lindalaelfa',
   // número de WhatsApp en formato internacional sin "+" (ej. '573001234567'); vacío = se copia el usuario
-  whatsapp:'',
+  whatsapp:'573203623738',
   look:{ skin:BLANCO, hair:'#0c0a0e', hairLen:30, fat:-1, fem:true, shirt:'#2a0f1e', logo:'#ff5cc6', pants:'#15131a', skirt:'#0e0c10' } };
 function drawManager(g, ph){
   g.globalAlpha = .22 + .1 * Math.sin(ph * 3); g.fillStyle = '#ff5cc6'; g.beginPath(); g.ellipse(0, 44, 30, 8, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
@@ -1660,8 +1660,8 @@ function buildEndBand(){
   const mc = document.createElement('div'); mc.className = 'endCard mgrCard';
   const c = document.createElement('canvas'); c.width = 240; c.height = 180; c.className = 'mgrCv';
   const info = document.createElement('div'); info.className = 'mgrInfo';
-  info.innerHTML = '<span>Manager · ' + MANAGER.handle + '</span>';
-  const b = document.createElement('button'); b.className = 'cloud'; b.innerHTML = '<b>Contrataciones</b><small>WhatsApp ' + MANAGER.handle + '</small>';
+  info.innerHTML = `<span>${MANAGER.name} · ${MANAGER.role}</span>`;
+  const b = document.createElement('button'); b.className = 'cloud'; b.innerHTML = `<b>Contrataciones</b><small>WhatsApp de ${MANAGER.name}</small>`;
   b.addEventListener('click', contactManager); info.prepend(b);
   mc.append(c, info); box.append(mc);
 }
