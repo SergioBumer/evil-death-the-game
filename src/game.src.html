@@ -1275,7 +1275,8 @@ function render(){
   drawEmbers(pal.acc);
   drawHUD(pal);
   if (popup && state === 'play') {
-    const k = popup.scale || 1, py = 104 * k - Math.max(0, 1 - popup.t) * 10;
+    // en la pelea final va más abajo, entre el Silenciador y las plataformas, para no taparle la cara
+    const k = popup.scale || 1, py = (cur === 6 ? 250 : 104 * k) - Math.max(0, 1 - popup.t) * 10;
     ctx.globalAlpha = Math.min(1, popup.t); ctx.textAlign = 'center';
     ctx.font = `${18 * k}px "Press Start 2P", monospace`; ctx.fillStyle = '#000'; ctx.fillText(popup.text, VW / 2 + 3 * k, py + 3 * k);
     ctx.fillStyle = popup.color || '#7fc4ff'; ctx.fillText(popup.text, VW / 2, py);
