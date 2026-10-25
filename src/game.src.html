@@ -597,6 +597,18 @@ const TAUNTS_LOW = [
 const TAUNT_EVERY = 10, TAUNT_SHOW = 5, TAUNT_FIRST = 3, TAUNT_LOW_PCT = .25, TAUNT_DEATH = 3.2;
 // Celular: el globo no se alcanza a leer mientras se juega, así que el Silenciador solo habla cuando el jugador muere.
 const phoneUI = matchMedia('(pointer:coarse),(max-height:500px)');
+// Computador, pelea final: frases que aparecen debajo de ¡MORISTE! / ¡CAÍSTE!
+const DEATH_TAUNTS = [
+  'Y si mejor te dedicas a otra cosa?',
+  'A estás alturas solo moriré con la Inyección Letal',
+  'Ni todos los Relojes de Arena marcarían el tiempo que llevas fracasando',
+  'Tienes que trabajar en ese Odio Abismal',
+  'Ya me estoy cansando de tu Llanto Eterno',
+  'Voces del más allá me dicen que no vas a ganar',
+  'Nadie en el urbano vive tu Vida Deshecha',
+  'Con mi flow, no pensamos más en Niños de guerra',
+];
+let deathLine = null;
 let taunt = null, tauntT = TAUNT_FIRST, tauntBag = [], tauntLow = false, lastTaunt = '';
 function nextTaunt(){
   const low = !!(boss && boss.hp <= boss.max * TAUNT_LOW_PCT);
@@ -896,7 +908,8 @@ function hurt(n, respawn, kdir){
   P.life -= n; SFX.hurt(); shake = Math.max(shake, 10); flashT = .35;
   burst(P.x + P.w / 2, P.y + 20, '#d4223a', 10, 200);
   if (P.life <= 0) { if (cur === 6 && boss && !boss.dead) bossNextPct = bossRecoverPct(Math.max(0, boss.hp) / boss.max);
-    diedByAttack = !respawn && kdir !== 0;   // enemigo, proyectil o jefe → "MORISTE"; abismo, pinchos o caída → "CAÍSTE"
+    diedByAttack = !respawn && kdir !== 0;
+    deathLine = cur === 6 && !phoneUI.matches ? DEATH_TAUNTS[Math.floor(Math.random() * DEATH_TAUNTS.length)] : null;   // enemigo, proyectil o jefe → "MORISTE"; abismo, pinchos o caída → "CAÍSTE"
     state = 'dead'; deadT = 1.8; introT = 0; taunt = null;
     if (cur === 6 && boss && !boss.dead && phoneUI.matches) { taunt = { text:nextTaunt(), t:TAUNT_DEATH, show:TAUNT_DEATH, big:true }; deadT += TAUNT_DEATH; SFX.zap(); } P.state = 'normal'; burst(P.x + P.w / 2, P.y + 20, '#d4223a', 30, 320); return; }
   P.invuln = 1.3;
@@ -1507,7 +1520,9 @@ function render(){
     ctx.globalAlpha = .6; R(ctx, '#000', 0, 0, VW, VH); ctx.globalAlpha = 1;
     ctx.textAlign = 'center'; ctx.font = '72px "Metal Mania", fantasy'; ctx.fillStyle = '#d4223a'; ctx.fillText(diedByAttack ? '¡MORISTE!' : '¡CAÍSTE!', VW / 2, VH / 2);
     const sub = cur !== 6 ? 'Vuelves al último amplificador encendido.' : 'Vuelves a enfrentar al Silenciador.';   // no se dice cuánta vida recupera el jefe
-    ctx.font = '24px VT323, monospace'; ctx.fillStyle = '#e9dcc5'; ctx.fillText(sub, VW / 2, VH / 2 + 40);
+    let subY = VH / 2 + 40;
+    if (deathLine) { ctx.font = '28px VT323, monospace'; ctx.fillStyle = '#ff5cc6'; ctx.fillText('"' + deathLine + '"', VW / 2, VH / 2 + 46); subY = VH / 2 + 84; }
+    ctx.font = '24px VT323, monospace'; ctx.fillStyle = '#e9dcc5'; ctx.fillText(sub, VW / 2, subY);
     ctx.textAlign = 'left';
   }
 }
