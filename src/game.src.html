@@ -192,7 +192,7 @@ body.isEnding #rotate{display:none!important}
         <span><kbd>↓</kbd></span><span>Agacharse (en el piso)</span>
         <span><kbd>X</kbd></span><span>Riff (ataque)</span>
         <span><kbd>C</kbd> <kbd>SHIFT</kbd></span><span>Dash</span>
-        <span><kbd>V</kbd></span><span>Grito gutural</span>
+        <span><kbd>V</kbd></span><span>Grito gutural (con Rodrigo en la batalla final: le lanza un tom al jefe)</span>
         <span><kbd>Q</kbd></span><span>Cambiar de personaje (o toca los retratos arriba a la izquierda)</span>
         <span><kbd>P</kbd> <kbd>ESC</kbd></span><span>Pausa · <kbd>M</kbd> sonido</span>
       </div>
@@ -270,7 +270,7 @@ body.isEnding #rotate{display:none!important}
     <button data-k="left" aria-label="Izquierda">◀</button><button data-k="down" aria-label="Abajo">▼</button><button data-k="right" aria-label="Derecha">▶</button>
   </div>
   <div class="acts">
-    <button data-k="shout" data-need="5">GRITO</button><button data-k="dash" data-need="2">DASH</button>
+    <button data-k="shout" data-need="5" id="bShout">GRITO</button><button data-k="dash" data-need="2">DASH</button>
     <button data-k="attack" data-need="0">RIFF</button><button data-k="jump" class="big">SALTO</button>
   </div>
 </div>
@@ -484,6 +484,10 @@ function setSound(on, fromUser=true){
 
 /* ============ ESTADO DEL MUNDO ============ */
 const CROUCH_DY = 16, SHOUT_RAD = 170;   // alcance del grito gutural (antes 280)
+/* Poder especial de Rodrigo (baterista) en la batalla final: en lugar del grito levanta un tom y se lo lanza al jefe.
+   Al impactar hace el efecto del grito con 15% menos de alcance. */
+const TOM_HERO = 1, TOM_RAD = SHOUT_RAD * .85, TOM_G = 1100, TOM_WIND = .28;
+const tomMode = () => hero === TOM_HERO && cur === 6 && boss && !boss.dead;
 const G = 1800, RUN = 220, JUMP = 620, DJUMP = 560, WJ_VY = 580, WJ_VX = 300, DASH_V = 560, DASH_T = .18, MAXFALL = 1100, BASE_LIFE = 4;
 const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
 const GRAB = new Set(['#', '=', 'B', 'O', 'o']);
@@ -609,7 +613,7 @@ function bossRecoverPct(pct){
   return Math.min(1, pct + bonus);
 }
 let state = 'menu', cur = 0, powers = 0, grid = null, W = 0, H = 0;
-let ents = [], parts = [], projs = [], eprojs = [], signs = [], boss = null;
+let ents = [], parts = [], projs = [], eprojs = [], toms = [], signs = [], boss = null;
 const loose = new Map(), gateAnim = new Map();
 let P = null, spawn = null, checkpoint = null, lastSafe = null;
 const cam = { x:0, y:0 };
@@ -624,7 +628,7 @@ const R = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 
 function newPlayer(pos){
   return { x:pos.x, y:pos.y, w:20, h:44, vx:0, vy:0, face:1, onGround:false, state:'normal', life:maxLife(), invuln:0,
-    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
+    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
     anim:0, hangDir:1, climbT:0, cx0:0, cy0:0, cx1:0, cy1:0, atkHit:new Set(), dashHit:new Set(), wall:0 };
 }
 
@@ -640,7 +644,7 @@ function loadLevel(i){
   cur = i; const d = LEVEL_DATA[i];
   H = d.rows.length; W = Math.max(...d.rows.map(r => r.length));
   grid = d.rows.map(r => r.padEnd(W, '.').split(''));
-  ents = []; parts = []; projs = []; eprojs = []; loose.clear(); gateAnim.clear(); boss = null; shoutFx = null;
+  ents = []; parts = []; projs = []; eprojs = []; toms = []; loose.clear(); gateAnim.clear(); boss = null; shoutFx = null;
   signs = d.signs.map(s => ({ x:s[0], y:s[1], text:s[2] }));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = grid[y][x], px = x * TS, py = y * TS;
@@ -834,15 +838,56 @@ function updatePlayer(dt){
   }
   // GRITO
   if (pressed('shout') && has(5) && p.shoutCD <= 0) {
-    p.shoutCD = 2.4; const cx = p.x + p.w / 2, cy = p.y + p.h / 2, RAD = SHOUT_RAD;
-    shoutFx = { x:cx, y:cy, t:0 }; SFX.shout(); shake = 16;
-    for (const e of ents) if ((e.t === 'E' || e.t === 'F') && !e.dead && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < RAD) damage(e, 99, Math.sign(e.x - cx) || 1);
-    for (let ty = Math.floor((cy - RAD) / TS); ty <= Math.floor((cy + RAD) / TS); ty++)
-      for (let tx = Math.floor((cx - RAD) / TS); tx <= Math.floor((cx + RAD) / TS); tx++)
-        if (tileAt(tx, ty) === 'B' && Math.hypot(tx * TS + 16 - cx, ty * TS + 16 - cy) < RAD) breakTile(tx, ty);
-    eprojs = eprojs.filter(q => Math.hypot(q.x - cx, q.y - cy) > RAD);
-    if (boss && !boss.dead && Math.hypot(boss.x + boss.w / 2 - cx, boss.y + boss.h / 2 - cy) < RAD + 50) bossDamage(1);
+    p.shoutCD = 2.4;
+    if (tomMode()) { p.tomT = TOM_WIND; SFX.dash(); }                     // Rodrigo levanta el tom; lo suelta al acabar TOM_WIND
+    else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); }
   }
+  if (p.tomT > 0) { p.tomT -= dt; if (p.tomT <= 0) throwTom(p); }
+}
+// Efecto del grito en (cx, cy) con alcance RAD: lo usan el grito gutural y el impacto del tom.
+function shoutBlast(cx, cy, RAD){
+  shoutFx = { x:cx, y:cy, t:0, rad:RAD }; shake = 16;
+  for (const e of ents) if ((e.t === 'E' || e.t === 'F') && !e.dead && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < RAD) damage(e, 99, Math.sign(e.x - cx) || 1);
+  for (let ty = Math.floor((cy - RAD) / TS); ty <= Math.floor((cy + RAD) / TS); ty++)
+    for (let tx = Math.floor((cx - RAD) / TS); tx <= Math.floor((cx + RAD) / TS); tx++)
+      if (tileAt(tx, ty) === 'B' && Math.hypot(tx * TS + 16 - cx, ty * TS + 16 - cy) < RAD) breakTile(tx, ty);
+  eprojs = eprojs.filter(q => Math.hypot(q.x - cx, q.y - cy) > RAD);
+  if (boss && !boss.dead && Math.hypot(boss.x + boss.w / 2 - cx, boss.y + boss.h / 2 - cy) < RAD + 50) bossDamage(1);
+}
+// Lanza el tom en parábola hacia el centro del jefe (si ya no hay jefe, hacia el frente).
+function throwTom(p){
+  const sx = p.x + p.w / 2, sy = p.y - 8;
+  let tx = sx + p.face * 260, ty = sy - 60;
+  if (boss && !boss.dead) { tx = boss.x + boss.w / 2; ty = boss.y + boss.h / 2; p.face = tx >= sx ? 1 : -1; }
+  const T = Math.max(.45, Math.min(.9, Math.hypot(tx - sx, ty - sy) / 650));
+  toms.push({ x:sx, y:sy, vx:(tx - sx) / T, vy:(ty - sy) / T - .5 * TOM_G * T, rot:0, t:0, T });
+}
+function updateToms(dt){
+  toms = toms.filter(m => {
+    m.t += dt;
+    const chase = boss && !boss.dead;
+    if (chase) {   // el jefe se mueve: se recalcula la parábola cada cuadro para que el tom le llegue (atraviesa las plataformas)
+      const Tr = Math.max(.08, m.T - m.t), tx = boss.x + boss.w / 2, ty = boss.y + boss.h / 2;
+      m.vx = (tx - m.x) / Tr; m.vy = (ty - m.y) / Tr - .5 * TOM_G * Tr;
+    }
+    m.vy += TOM_G * dt; m.x += m.vx * dt; m.y += m.vy * dt; m.rot += dt * 12 * Math.sign(m.vx || 1);
+    const box = { x:m.x - 11, y:m.y - 8, w:22, h:16 };
+    const hit = m.t > 2.2 || (!chase && isSolid(Math.floor(m.x / TS), Math.floor(m.y / TS)))
+      || (chase && overlap(box, boss))
+      || ents.some(e => (e.t === 'E' || e.t === 'F') && !e.dead && overlap(box, e));
+    if (!hit) return true;
+    burst(m.x, m.y, '#e0b04a', 16, 260); burst(m.x, m.y, '#e8e2d0', 8, 180);
+    SFX.shout(); shoutBlast(m.x, m.y, TOM_RAD);
+    return false;
+  });
+}
+// Tom de batería (pixel art) centrado en (0, 0)
+function drawTom(g){
+  R(g, '#e0b04a', -11, -5, 22, 11);                          // casco
+  R(g, '#9c7424', -11, 4, 22, 2);
+  R(g, '#e8e2d0', -11, -8, 22, 3);                           // parche
+  R(g, '#c9ccd2', -12, -5, 24, 1); R(g, '#c9ccd2', -12, 5, 24, 1);   // aros
+  for (const x of [-8, -1, 6]) R(g, '#c9ccd2', x, -3, 2, 6); // tensores
 }
 
 function hurt(n, respawn, kdir){
@@ -1058,7 +1103,7 @@ function step(dt){
   if (state === 'dead') { deadT -= dt; updateParts(dt); if (deadT <= 0) respawn(); return; }
   introT = Math.max(0, introT - dt);
   if (state === 'play') updatePlayer(dt);
-  updateEnts(dt); updateBoss(dt); updateProjs(dt); updateLoose(dt); updateParts(dt);
+  updateEnts(dt); updateBoss(dt); updateProjs(dt); updateToms(dt); updateLoose(dt); updateParts(dt);
   if (state === 'play') checkInteractions();
   if (state === 'bossdown') { bossDownT -= dt; if (bossDownT <= 0) showEnding(); }
   if (state === 'play' || state === 'bossdown') updateCam(dt);
@@ -1068,6 +1113,7 @@ function step(dt){
     tauntT -= dt;
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
+  const shoutLbl = tomMode() ? 'TOM' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
   if (taunt) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
 }
 let last = performance.now(), acc = 0;
@@ -1130,6 +1176,7 @@ function drawPerson(g, cx, top, face, o){
   else R(g, o.beard || '#3a2a22', 0, 10, 6, 3);
   const ax = 2 + Math.max(0, f);
   if (pose === 'hang') { R(g, shirt, 0, -2, armW, 16); R(g, skin, 0, -6, armW, 5); }
+  else if (o.armsUp) { R(g, shirt, -9, 4, armW, 11); R(g, skin, -9, -2, armW, 6); R(g, shirt, ax + 4, 4, armW, 11); R(g, skin, ax + 4, -2, armW, 6); }   // ambos brazos arriba
   else if (o.armUp) { R(g, shirt, ax, 14, armW, 5); R(g, skin, ax + 3, 12, 5, 4); }   // brazo al frente sujetando el micrófono
   else { const s2 = Math.round(lp * 3); R(g, shirt, ax + s2, 14, armW, 5); R(g, skin, ax + s2, 19, armW, 7); }
   if (o.front) o.front(g);
@@ -1277,6 +1324,7 @@ function drawProjs(){
     }
     ctx.fillStyle = '#ff5cc6'; ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill(); R(ctx, '#fff', q.x - 2, q.y - 2, 3, 3);
   }
+  for (const m of toms) { ctx.save(); ctx.translate(Math.round(m.x), Math.round(m.y)); ctx.rotate(m.rot); ctx.scale(1.5, 1.5); drawTom(ctx); ctx.restore(); }
 }
 function drawWeapon(g, inst, a, col){
   // arma en la mano durante el ataque: a = ángulo del golpe
@@ -1299,14 +1347,16 @@ function drawPlayer(){
   const H = hero >= 0 ? BAND[hero] : null, inst = H ? H.inst : 'guitar', col = H ? H.col : '#b3122a';
   const look = H ? { ...H.look, hair:H.hair, shirt:H.shirt, logo:H.col } : {};
   let back = null, front = null;
-  if (atk) front = g => {
+  const lift = p.tomT > 0 && pose !== 'hang';                      // Rodrigo con el tom sobre la cabeza
+  if (lift) front = g => { g.save(); g.translate(1, -12 + Math.round(p.tomT / TOM_WIND * 6)); drawTom(g); g.restore(); };
+  else if (atk) front = g => {
     drawWeapon(g, inst, -1.9 + k * 2.6, col);
     g.strokeStyle = 'rgba(233,220,197,' + (1 - k) * .8 + ')'; g.lineWidth = 3; g.beginPath(); g.arc(6, 18, inst === 'mic' ? 34 : 30, -1.6, -1.6 + k * 2.4); g.stroke();
   };
   else if (inst === 'sticks') front = g => drawInstrument(g, H, p.anim);
   else if (inst === 'mic') front = g => { R(g, '#555', 9, 6, 2, 24); R(g, '#bfc4cc', 7, 2, 6, 5); };   // pie de micrófono en la mano
   else back = g => drawGuitar(g, -5, 20, -2.25, col, inst === 'bass' ? 28 : 24);
-  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { ...look, pose, leg, sway, armUp:inst === 'mic' && !atk && pose !== 'hang', back, front });
+  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { ...look, pose, leg, sway, armUp:inst === 'mic' && !atk && pose !== 'hang', armsUp:lift, back, front });
 }
 function drawTaunt(){
   // Globo de diálogo pegado al Silenciador: lo sigue por la pantalla, así sale a su lado izquierdo o derecho.
@@ -1414,7 +1464,7 @@ function render(){
   ctx.globalAlpha = 1;
   if (shoutFx) {
     const k = shoutFx.t / .55;
-    for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(255,47,79,${(1 - k) * (1 - i * .25)})`; ctx.lineWidth = 6 - i * 2; const rr = SHOUT_RAD * k - i * 26; if (rr <= 0) continue; ctx.beginPath(); ctx.arc(shoutFx.x, shoutFx.y, rr, 0, Math.PI * 2); ctx.stroke(); }
+    for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(255,47,79,${(1 - k) * (1 - i * .25)})`; ctx.lineWidth = 6 - i * 2; const rr = (shoutFx.rad || SHOUT_RAD) * k - i * 26; if (rr <= 0) continue; ctx.beginPath(); ctx.arc(shoutFx.x, shoutFx.y, rr, 0, Math.PI * 2); ctx.stroke(); }
   }
   ctx.restore();
   drawEmbers(pal.acc);
@@ -1610,6 +1660,6 @@ setTimeout(() => $('menu').classList.remove('intro'), 2200);
 requestAnimationFrame(frame);
 
 // gancho para pruebas
-window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; } };
+window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get shoutFx(){ return shoutFx; } };
 })();
 </script>
