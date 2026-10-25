@@ -132,8 +132,18 @@ body.isEnding #rotate{display:none!important}
 .shareCta{font-size:20px;margin:0 auto;color:var(--bone)}
 #toast{position:fixed;z-index:30;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1d1317;border:2px solid #ffb347;
   color:var(--bone);font-family:var(--f-pixel);font-size:10px;letter-spacing:.06em;padding:12px 14px;max-width:calc(100% - 32px);text-align:center}
-.menuSocial{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
-.menuSocial span{font-size:19px}
+/* Seguir a la banda: segunda acción del menú, en contorno para que "Jugar" siga siendo el único botón lleno */
+.menuFollow{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
+.menuFollow span{font-size:18px;line-height:1.1}
+.menuFollow .btnLink{background:rgba(212,34,58,.12);color:var(--bone)}
+.menuFollow .btnShare{background:transparent;color:#ffb347;border-color:#ffb347}
+/* Pantallas bajas (celular en horizontal): la historia baja después de los botones para que Jugar y Síguenos se vean sin scroll */
+@media (max-height:560px){
+  #menuStory{order:1;font-size:19px}
+  #menu .panel > :is(h3,#lvlGrid,details){order:2}
+  #menu h1{font-size:clamp(34px,6vw,48px)}
+  #menu .panel{gap:10px;padding-block:14px}
+}
 #heroBar{position:fixed;z-index:8;display:flex;flex-direction:column;gap:5px;left:calc(10px + env(safe-area-inset-left,0px));top:60px;
   padding:5px;background:rgba(10,6,8,.55);border:1px solid var(--line);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
 #heroBar::-webkit-scrollbar{display:none}
@@ -171,10 +181,18 @@ body.isEnding #rotate{display:none!important}
       <p class="presenta">presenta</p>
     </div>
     <h1>La Gira Maldita</h1>
-    <p>El Silenciador, un productor que odia la distorsión, se robó el ruido de Bogotá y dispersó a la banda. Encuentra a los seis músicos, recupera el objeto de cada uno y gana sus poderes para devolverle el metal al Gran Festival.</p>
+    <p id="menuStory">El Silenciador, un productor que odia la distorsión, se robó el ruido de Bogotá y dispersó a la banda. Encuentra a los seis músicos, recupera el objeto de cada uno y gana sus poderes para devolverle el metal al Gran Festival.</p>
     <div class="row">
       <button id="bPlay" class="primary">Jugar</button>
       <button id="bSound">Sonido: sí</button>
+    </div>
+    <!-- Seguir a la banda: justo debajo de Jugar, visible sin hacer scroll (antes estaba al final del menú) -->
+    <div class="menuFollow">
+      <div class="row">
+        <a class="btnLink" href="https://linktr.ee/evildeathofficial" target="_blank" rel="noopener">Síguenos en redes</a>
+        <button class="btnShare" data-share="menu">Compartir el juego</button>
+      </div>
+      <span class="muted">TikTok · Instagram · X · Facebook · Threads</span>
     </div>
     <p id="winsInfo" class="winsInfo" hidden></p>
     <h3>NIVELES</h3>
@@ -194,13 +212,6 @@ body.isEnding #rotate{display:none!important}
       </div>
       <p class="muted" style="margin-top:8px">En el celular aparecen botones en pantalla. Juega en horizontal.</p>
     </details>
-    <div class="menuSocial">
-      <span class="muted">Evil Death en TikTok, Instagram, X, Facebook y Threads</span>
-      <div class="row">
-        <button class="btnShare" data-share="menu">Compartir el juego</button>
-        <a class="btnLink" href="https://linktr.ee/evildeathofficial" target="_blank" rel="noopener">Síguenos en redes</a>
-      </div>
-    </div>
   </div>
 </div>
 
