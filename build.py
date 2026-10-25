@@ -36,6 +36,8 @@ head = ('<!doctype html>\n<html lang="es">\n<meta charset="utf-8">\n'
         '<meta property="og:image" content="https://evil-death.vercel.app/og-image.png">\n'
         '<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
         '<meta property="og:locale" content="es_CO">\n'
-        '<meta name="twitter:card" content="summary_large_image">\n')
+        '<meta name="twitter:card" content="summary_large_image">\n'
+        # Vercel Web Analytics: sin cookies y sin datos personales. Hay que activarlo en el panel de Vercel (pestaña Analytics).
+        '<script defer src="/_vercel/insights/script.js"></script>\n')
 (ROOT / 'index.html').write_text(head + body + '\n</html>\n', encoding='utf-8')
 print('ok', len(body))
