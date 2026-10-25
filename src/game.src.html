@@ -910,7 +910,7 @@ function respawn(){
   if (cur === 6) {
     bossCarry = bossNextPct; bossNextPct = null;
     loadLevel(6); introT = 0; P.invuln = 1.5; P.life = respawnLife();
-    popup = { text:'¡RESURRECCIÓN!', sub:boss && !phoneUI.matches ? `El Silenciador vuelve con ${Math.round(boss.hp / boss.max * 100)}% de vida` : '', t:2.6, color:'#ff5a6e', scale:1.5 };
+    popup = { text:'¡RESURRECCIÓN!', t:2.6, color:'#ff5a6e', scale:1.5 };
     return;
   }
   P = newPlayer(checkpoint); P.life = respawnLife(); P.invuln = 1.5; lastSafe = { ...checkpoint }; state = 'play'; showUI('play');
@@ -1506,7 +1506,7 @@ function render(){
   if (state === 'dead' && !(taunt && taunt.big)) {   // en celular primero habla el Silenciador y luego sale esta pantalla
     ctx.globalAlpha = .6; R(ctx, '#000', 0, 0, VW, VH); ctx.globalAlpha = 1;
     ctx.textAlign = 'center'; ctx.font = '72px "Metal Mania", fantasy'; ctx.fillStyle = '#d4223a'; ctx.fillText(diedByAttack ? '¡MORISTE!' : '¡CAÍSTE!', VW / 2, VH / 2);
-    const sub = cur !== 6 ? 'Vuelves al último amplificador encendido.' : phoneUI.matches ? 'Vuelves a enfrentar al Silenciador.' : `El Silenciador se recupera hasta ${Math.round((bossNextPct ?? 1) * 100)}%.`;
+    const sub = cur !== 6 ? 'Vuelves al último amplificador encendido.' : 'Vuelves a enfrentar al Silenciador.';   // no se dice cuánta vida recupera el jefe
     ctx.font = '24px VT323, monospace'; ctx.fillStyle = '#e9dcc5'; ctx.fillText(sub, VW / 2, VH / 2 + 40);
     ctx.textAlign = 'left';
   }
