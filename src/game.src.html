@@ -993,7 +993,12 @@ function updateBoss(dt){
   if (b.spawnT <= 0) {
     b.spawnT = 7;
     if (ents.filter(e => e.t === 'F').length < (b.hp < b.max * .5 ? 4 : 2)) ents.push({ t:'F', x:b.x + b.w / 2, y:b.y + b.h, w:22, h:22, hx:b.x + b.w / 2, hy:b.y + b.h + 40, hp:diff(), hurt:0, ph:0 });
-  }
+    // El Silenciador también llama posers: entran por el lado contrario al jugador si quedan menos de 2
+    if (ents.filter(e => e.t === 'E' && !e.dead).length < 2) {
+      const left = P.x > mid, px = left ? 2 * TS : (W - 3) * TS, py = (H - 3) * TS - 40;
+      ents.push({ t:'E', x:px + 4, y:py, w:24, h:40, vx:left ? 60 : -60, vy:0, hp:2 * diff(), hurt:0, anim:0 });
+      burst(px + 16, py + 20, '#ff5cc6', 14, 200);
+    }
   if (state === 'play' && overlap(P, b)) hurt(1, false, Math.sign(P.x - b.x - b.w / 2) || 1);
 }
 function updateProjs(dt){

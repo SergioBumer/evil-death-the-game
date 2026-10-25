@@ -147,8 +147,8 @@ L.append(dict(rows=rows(g), signs=[
 g = new(34, 17)
 rect(g, 0, 0, 0, 16); rect(g, 33, 0, 33, 16); ground(g, 0, 33, 14)
 rect(g, 5, 10, 9, 10); rect(g, 24, 10, 28, 10); rect(g, 13, 6, 20, 6)
-put(g, 3, 13, 'S'); put(g, 17, 2, 'K'); put(g, 7, 9, 'H'); put(g, 26, 9, 'H')
-put(g, 5, 9, 'V'); put(g, 28, 9, 'V')   # 2 vidas extra para la pelea final
+put(g, 3, 13, 'S'); put(g, 17, 2, 'K')
+for x, y in [(12, 13), (21, 13), (30, 13), (16, 5)]: put(g, x, y, 'E')   # posers (el jefe llama más durante la pelea)
 L.append(dict(rows=rows(g), signs=[]))
 
 if __name__ == "__main__":
