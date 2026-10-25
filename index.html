@@ -528,7 +528,9 @@ if (!save.blue || typeof save.blue !== 'object') save.blue = {};
 if (!Number.isFinite(save.wins) || save.wins < 0) save.wins = 0;
 /* Dificultad: cada gira completada sube 20% la vida de enemigos y jefe (máximo x3). */
 const DIFF_STEP = .2, DIFF_MAX = 3;
-const BOSS_HP = 6 * 1.2;   // vida base del jefe: +20% desde la primera gira
+const BOSS_HP = 6 * 1.2;
+// Pelea final: cada 4–7 s cae una vida (corazón rojo) desde el techo; dura HEART_STAY s en el piso y desaparece.
+const heartGap = () => 4 + Math.random() * 3, HEART_FALL = 120, HEART_STAY = 6;   // vida base del jefe: +20% desde la primera gira
 const diff = () => Math.min(DIFF_MAX, 1 + save.wins * DIFF_STEP);
 const diffTxt = v => 'x' + v.toFixed(1).replace('.', ',');
 function persist(){ try { localStorage.setItem('evildeath_gira', JSON.stringify(save)); } catch(e) {} }
@@ -847,7 +849,7 @@ function loadLevel(i){
       case 'H': ents.push({ t:'H', x:px + 8, y:py + 8, w:16, h:16, ph:Math.random() * 6 }); break;
       case 'M': ents.push({ t:'M', x:px + 2, y:py + TS - 46, w:28, h:46, ph:0 }); break;
       case 'C': ents.push({ t:'C', x:px + 4, y:py + TS - 30, w:24, h:30, on:false }); break;
-      case 'K': boss = { x:px, y:py, w:84, h:96, hp:BOSS_HP * diff(), max:BOSS_HP * diff(), t:0, shootT:2.5, spawnT:6, hurt:0, dead:false };
+      case 'K': boss = { x:px, y:py, w:84, h:96, hp:BOSS_HP * diff(), max:BOSS_HP * diff(), heartT:heartGap(), t:0, shootT:2.5, spawnT:6, hurt:0, dead:false };
         if (bossCarry != null) { boss.hp = boss.max * bossCarry; bossCarry = null; }
         break;
       default: clear = false;
@@ -1157,6 +1159,9 @@ function updateEnts(dt){
       const dx = P.x + P.w / 2 - (e.x + e.w / 2), dy = P.y + P.h / 2 - (e.y + e.h / 2), d = Math.hypot(dx, dy) || 1;
       if (d < 300 && state === 'play') { e.x += dx / d * 78 * dt; e.y += dy / d * 78 * dt + Math.sin(e.ph * 4) * 30 * dt; }
       else { e.x += (e.hx - e.x) * dt; e.y += (e.hy + Math.sin(e.ph * 2) * 16 - e.y) * 2 * dt; }
+    } else if (e.t === 'H' && (e.fall || e.stay != null)) {          // corazón que cae del techo en la pelea final
+      if (e.fall) { e.y += HEART_FALL * dt; if (isSolid(Math.floor((e.x + 8) / TS), Math.floor((e.y + e.h) / TS))) { e.y = Math.floor((e.y + e.h) / TS) * TS - e.h; e.fall = false; } }
+      else { e.ph += dt; e.stay -= dt; if (e.stay <= 0) e.dead = true; }
     } else if (e.t === 'H' || e.t === 'M' || e.t === 'V') e.ph += dt;
   }
   ents = ents.filter(e => !e.dead);
@@ -1189,6 +1194,15 @@ function updateBoss(dt){
       const left = P.x > mid, px = left ? 2 * TS : (W - 3) * TS, py = (H - 3) * TS - 40;
       ents.push({ t:'E', x:px + 4, y:py, w:24, h:40, vx:left ? 60 : -60, vy:0, hp:2 * diff(), hurt:0, anim:0 });
       burst(px + 16, py + 20, '#ff5cc6', 14, 200);
+    }
+  }
+  b.heartT -= dt;
+  if (b.heartT <= 0 && state === 'play') {
+    b.heartT = heartGap();
+    if (ents.filter(e => e.t === 'H' && !e.dead).length < 2) {
+      let tx = 2 + Math.floor(Math.random() * (W - 4));
+      if (Math.abs(tx * TS - P.x) < 2 * TS) tx = (tx + 6) % (W - 4) + 2;   // que no le caiga justo encima: hay que ir por ella
+      ents.push({ t:'H', x:tx * TS + 8, y:TS, w:16, h:16, ph:0, fall:true, stay:HEART_STAY });
     }
   }
   if (state === 'play' && overlap(P, b)) hurt(1, false, Math.sign(P.x - b.x - b.w / 2) || 1);
@@ -1463,7 +1477,8 @@ function drawEnts(){
       R(ctx, c, x + 3, y - 12, 3, 17); ctx.beginPath(); ctx.moveTo(x + 6, y - 12); ctx.lineTo(x + 14, y - 6 + Math.sin(e.ph * 8) * 2); ctx.lineTo(x + 6, y - 5); ctx.fill();
       R(ctx, '#fff', x - 7, y + 3, 3, 3); R(ctx, '#fff', x - 2, y + 2, 3, 3); R(ctx, '#200', x - 6, y + 4, 2, 2); R(ctx, '#200', x - 1, y + 3, 2, 2);
     } else if (e.t === 'H') {
-      const yy = e.y + Math.sin(e.ph * 3) * 3; drawHeart(e.x - 2, yy, true);
+      if (e.stay != null && !e.fall && e.stay < 2 && Math.floor(e.stay * 8) % 2) continue;   // parpadea antes de desaparecer
+      const yy = e.y + (e.fall ? 0 : Math.sin(e.ph * 3) * 3); drawHeart(e.x - 2, yy, true);
     } else if (e.t === 'V') {
       const yy = e.y + Math.sin(e.ph * 3) * 4;
       ctx.globalAlpha = .25 + .15 * Math.sin(e.ph * 5); ctx.fillStyle = '#5ab4ff'; ctx.beginPath(); ctx.arc(e.x + 8, yy + 8, 22, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
