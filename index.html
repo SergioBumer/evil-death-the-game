@@ -779,7 +779,9 @@ const TAUNTS_LOW = [
   '¡HAS PERDIDO, METALERO! ¡AHORA MI PRODUCTOR VA A HACER UN REMIX DE TU DERROTA!',
   '¡NO NECESITO UN BIS! ¡EL ALGORITMO YA DECIDIÓ QUE ME VAS A ESCUCHAR OTRA VEZ!',
 ];
-const TAUNT_EVERY = 10, TAUNT_SHOW = 5, TAUNT_FIRST = 3, TAUNT_LOW_PCT = .25;
+const TAUNT_EVERY = 10, TAUNT_SHOW = 5, TAUNT_FIRST = 3, TAUNT_LOW_PCT = .25, TAUNT_DEATH = 3.2;
+// Celular: el globo no se alcanza a leer mientras se juega, así que el Silenciador solo habla cuando el jugador muere.
+const phoneUI = matchMedia('(pointer:coarse),(max-height:500px)');
 let taunt = null, tauntT = TAUNT_FIRST, tauntBag = [], tauntLow = false, lastTaunt = '';
 function nextTaunt(){
   const low = !!(boss && boss.hp <= boss.max * TAUNT_LOW_PCT);
@@ -1080,7 +1082,8 @@ function hurt(n, respawn, kdir){
   burst(P.x + P.w / 2, P.y + 20, '#d4223a', 10, 200);
   if (P.life <= 0) { if (cur === 6 && boss && !boss.dead) bossNextPct = bossRecoverPct(Math.max(0, boss.hp) / boss.max);
     diedByAttack = !respawn && kdir !== 0;   // enemigo, proyectil o jefe → "MORISTE"; abismo, pinchos o caída → "CAÍSTE"
-    state = 'dead'; deadT = 1.8; introT = 0; P.state = 'normal'; burst(P.x + P.w / 2, P.y + 20, '#d4223a', 30, 320); return; }
+    state = 'dead'; deadT = 1.8; introT = 0; taunt = null;
+    if (cur === 6 && boss && !boss.dead && phoneUI.matches) { taunt = { text:nextTaunt(), t:TAUNT_DEATH, show:TAUNT_DEATH, big:true }; deadT += TAUNT_DEATH; SFX.zap(); } P.state = 'normal'; burst(P.x + P.w / 2, P.y + 20, '#d4223a', 30, 320); return; }
   P.invuln = 1.3;
   if (respawn) toSafe();
   else { P.state = 'normal'; P.vy = -320; P.vx = (kdir || -P.face) * 240; P.wjLock = .25; }
@@ -1092,7 +1095,7 @@ function respawn(){
   if (cur === 6) {
     bossCarry = bossNextPct; bossNextPct = null;
     loadLevel(6); introT = 0; P.invuln = 1.5; P.life = respawnLife();
-    popup = { text:'¡RESURRECCIÓN!', sub:boss ? `El Silenciador vuelve con ${Math.round(boss.hp / boss.max * 100)}% de vida` : '', t:2.6, color:'#ff5a6e', scale:1.5 };
+    popup = { text:'¡RESURRECCIÓN!', sub:boss && !phoneUI.matches ? `El Silenciador vuelve con ${Math.round(boss.hp / boss.max * 100)}% de vida` : '', t:2.6, color:'#ff5a6e', scale:1.5 };
     return;
   }
   P = newPlayer(checkpoint); P.life = respawnLife(); P.invuln = 1.5; lastSafe = { ...checkpoint }; state = 'play'; showUI('play');
@@ -1187,6 +1190,7 @@ function updateBoss(dt){
       ents.push({ t:'E', x:px + 4, y:py, w:24, h:40, vx:left ? 60 : -60, vy:0, hp:2 * diff(), hurt:0, anim:0 });
       burst(px + 16, py + 20, '#ff5cc6', 14, 200);
     }
+  }
   if (state === 'play' && overlap(P, b)) hurt(1, false, Math.sign(P.x - b.x - b.w / 2) || 1);
 }
 function updateProjs(dt){
@@ -1290,7 +1294,7 @@ function step(dt){
   if (state === 'paused') { if (pressed('pause')) resume(); return; }
   if (state === 'ending') { if (pressed('start')) toMenu(); return; }
   if (state === 'play' && pressed('pause')) { pause(); return; }
-  if (state === 'dead') { deadT -= dt; updateParts(dt); if (deadT <= 0) respawn(); return; }
+  if (state === 'dead') { deadT -= dt; updateParts(dt); if (taunt && (taunt.t -= dt) <= 0) taunt = null; if (deadT <= 0) respawn(); return; }
   introT = Math.max(0, introT - dt);
   if (state === 'play') updatePlayer(dt);
   updateEnts(dt); updateBoss(dt); updateProjs(dt); updateToms(dt); updateLoose(dt); updateParts(dt);
@@ -1299,12 +1303,12 @@ function step(dt){
   if (state === 'play' || state === 'bossdown') updateCam(dt);
   shake = Math.max(0, shake - dt * 30); flashT = Math.max(0, flashT - dt);
   if (popup) { popup.t -= dt; if (popup.t <= 0) popup = null; }
-  if (state === 'play' && cur === 6 && boss && !boss.dead) {
+  if (state === 'play' && cur === 6 && boss && !boss.dead && !phoneUI.matches) {
     tauntT -= dt;
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
   const shoutLbl = tomMode() ? 'TOM' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
-  if (taunt) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
+  if (taunt && !taunt.big) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
 }
 let last = performance.now(), acc = 0;
 const STEP = 1 / 60;
@@ -1550,10 +1554,11 @@ function drawPlayer(){
 }
 function drawTaunt(){
   // Globo de diálogo pegado al Silenciador: lo sigue por la pantalla, así sale a su lado izquierdo o derecho.
-  const age = TAUNT_SHOW - taunt.t, a = Math.min(1, age / .15, taunt.t / .35), pop = 1 + Math.max(0, .15 - age) * 1.2;
+  const age = (taunt.show || TAUNT_SHOW) - taunt.t, a = Math.min(1, age / .15, taunt.t / .35), pop = 1 + Math.max(0, .15 - age) * 1.2;
   const bsx = boss.x + boss.w / 2 - cam.x, bsy = boss.y + boss.h - cam.y;
-  ctx.font = '27px VT323, monospace';
-  const bw = Math.min(324, VW - 32), lines = wrapText(taunt.text, bw - 26), lh = 27;
+  const fs = taunt.big ? 40 : 27, font = `${fs}px VT323, monospace`;   // big: al morir en celular (juego quieto), letra más grande
+  ctx.font = font;
+  const bw = Math.min(taunt.big ? 620 : 324, VW - 32), lines = wrapText(taunt.text, bw - 26), lh = fs;
   const bh = 25 + lines.length * lh + 9;
   const bx = Math.max(16, Math.min(VW - bw - 16, bsx - bw / 2)), by = bsy + 18;
   const tx = Math.max(bx + 24, Math.min(bx + bw - 24, bsx));
@@ -1564,7 +1569,7 @@ function drawTaunt(){
   ctx.fillRect(tx - 9, by - 1, 18, 4);                                         // une la colita con el globo
   ctx.textAlign = 'center';
   ctx.font = '8px "Press Start 2P", monospace'; ctx.fillStyle = '#ff5cc6'; ctx.fillText('EL SILENCIADOR:', bx + bw / 2, by + 16);
-  ctx.font = '27px VT323, monospace';
+  ctx.font = font;
   lines.forEach((l, i) => { const y = by + 25 + (i + 1) * lh - 4; ctx.fillStyle = '#000'; ctx.fillText(l, bx + bw / 2 + 2, y + 2); ctx.fillStyle = '#fff'; ctx.fillText(l, bx + bw / 2, y); });
   ctx.textAlign = 'left'; ctx.restore();
 }
@@ -1668,12 +1673,13 @@ function render(){
     if (popup.sub) { ctx.font = `${24 * k}px VT323, monospace`; ctx.fillStyle = '#e9dcc5'; ctx.fillText(popup.sub, VW / 2, py + 30 * k); }
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   }
-  if (taunt && state === 'play') drawTaunt();
+  if (taunt && (state === 'play' || state === 'dead')) drawTaunt();
   if (flashT > 0) { ctx.globalAlpha = flashT; R(ctx, '#d4223a', 0, 0, VW, VH); ctx.globalAlpha = 1; }
-  if (state === 'dead') {
+  if (state === 'dead' && !(taunt && taunt.big)) {   // en celular primero habla el Silenciador y luego sale esta pantalla
     ctx.globalAlpha = .6; R(ctx, '#000', 0, 0, VW, VH); ctx.globalAlpha = 1;
     ctx.textAlign = 'center'; ctx.font = '72px "Metal Mania", fantasy'; ctx.fillStyle = '#d4223a'; ctx.fillText(diedByAttack ? '¡MORISTE!' : '¡CAÍSTE!', VW / 2, VH / 2);
-    ctx.font = '24px VT323, monospace'; ctx.fillStyle = '#e9dcc5'; ctx.fillText(cur === 6 ? `El Silenciador se recupera hasta ${Math.round((bossNextPct ?? 1) * 100)}%.` : 'Vuelves al último amplificador encendido.', VW / 2, VH / 2 + 40);
+    const sub = cur !== 6 ? 'Vuelves al último amplificador encendido.' : phoneUI.matches ? 'Vuelves a enfrentar al Silenciador.' : `El Silenciador se recupera hasta ${Math.round((bossNextPct ?? 1) * 100)}%.`;
+    ctx.font = '24px VT323, monospace'; ctx.fillStyle = '#e9dcc5'; ctx.fillText(sub, VW / 2, VH / 2 + 40);
     ctx.textAlign = 'left';
   }
 }
