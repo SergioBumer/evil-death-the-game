@@ -794,7 +794,16 @@ const DEATH_TAUNTS = [
   'Nadie en el urbano vive tu Vida Deshecha',
   'Con mi flow, no pensamos más en Niños de guerra',
 ];
-let deathLine = null;
+let deathLine = null, deathBag = [], lastDeathLine = '';
+// Se muestran todas antes de repetir: se saca una al azar de la bolsa hasta vaciarla, luego se rellena.
+function nextDeathLine(){
+  if (!deathBag.length) {
+    deathBag = DEATH_TAUNTS.slice();
+    for (let i = deathBag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deathBag[i], deathBag[j]] = [deathBag[j], deathBag[i]]; }
+    if (deathBag[deathBag.length - 1] === lastDeathLine) deathBag.unshift(deathBag.pop());   // que no se repita en la frontera
+  }
+  return lastDeathLine = deathBag.pop();
+}
 let taunt = null, tauntT = TAUNT_FIRST, tauntBag = [], tauntLow = false, lastTaunt = '';
 function nextTaunt(){
   const low = !!(boss && boss.hp <= boss.max * TAUNT_LOW_PCT);
@@ -1095,7 +1104,7 @@ function hurt(n, respawn, kdir){
   burst(P.x + P.w / 2, P.y + 20, '#d4223a', 10, 200);
   if (P.life <= 0) { if (cur === 6 && boss && !boss.dead) bossNextPct = bossRecoverPct(Math.max(0, boss.hp) / boss.max);
     diedByAttack = !respawn && kdir !== 0;
-    deathLine = cur === 6 && !phoneUI.matches ? DEATH_TAUNTS[Math.floor(Math.random() * DEATH_TAUNTS.length)] : null;   // enemigo, proyectil o jefe → "MORISTE"; abismo, pinchos o caída → "CAÍSTE"
+    deathLine = cur === 6 && !phoneUI.matches ? nextDeathLine() : null;   // enemigo, proyectil o jefe → "MORISTE"; abismo, pinchos o caída → "CAÍSTE"
     state = 'dead'; deadT = 1.8; introT = 0; taunt = null;
     if (deathLine) deadT += 3;   // computador, pelea final: la pantalla de muerte dura 3 s más
     if (cur === 6 && boss && !boss.dead && phoneUI.matches) { taunt = { text:nextTaunt(), t:TAUNT_DEATH, show:TAUNT_DEATH, big:true }; deadT += TAUNT_DEATH; SFX.zap(); } P.state = 'normal'; burst(P.x + P.w / 2, P.y + 20, '#d4223a', 30, 320); return; }
@@ -1886,7 +1895,7 @@ setTimeout(() => $('menu').classList.remove('intro'), 2200);
 requestAnimationFrame(frame);
 
 // gancho para pruebas
-window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get shoutFx(){ return shoutFx; } };
+window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
 })();
 </script>
 
