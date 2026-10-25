@@ -192,7 +192,7 @@ body.isEnding #rotate{display:none!important}
         <span><kbd>↓</kbd></span><span>Agacharse (en el piso)</span>
         <span><kbd>X</kbd></span><span>Riff (ataque)</span>
         <span><kbd>C</kbd> <kbd>SHIFT</kbd></span><span>Dash</span>
-        <span><kbd>V</kbd></span><span>Grito gutural (con Rodrigo en la batalla final: le lanza un tom al jefe)</span>
+        <span><kbd>V</kbd></span><span>Grito gutural (con Rodrigo en la batalla final: lanza un tom hacia el frente)</span>
         <span><kbd>Q</kbd></span><span>Cambiar de personaje (o toca los retratos arriba a la izquierda)</span>
         <span><kbd>P</kbd> <kbd>ESC</kbd></span><span>Pausa · <kbd>M</kbd> sonido</span>
       </div>
@@ -484,9 +484,10 @@ function setSound(on, fromUser=true){
 
 /* ============ ESTADO DEL MUNDO ============ */
 const CROUCH_DY = 16, SHOUT_RAD = 170;   // alcance del grito gutural (antes 280)
-/* Poder especial de Rodrigo (baterista) en la batalla final: en lugar del grito levanta un tom y se lo lanza al jefe.
+/* Poder especial de Rodrigo (baterista) en la batalla final: en lugar del grito levanta un tom y lo lanza hacia el frente.
    Al impactar hace el efecto del grito con 15% menos de alcance. */
-const TOM_HERO = 1, TOM_RAD = SHOUT_RAD * .85, TOM_G = 1100, TOM_WIND = .28;
+const TOM_HERO = 1, TOM_RAD = SHOUT_RAD * .85, TOM_G = 1100, TOM_WIND = .28, TOM_VY = -300;
+const TOM_RANGE = () => VW * .2;   // alcance máximo del lanzamiento: 20% del ancho de la pantalla
 const tomMode = () => hero === TOM_HERO && cur === 6 && boss && !boss.dead;
 const G = 1800, RUN = 220, JUMP = 620, DJUMP = 560, WJ_VY = 580, WJ_VX = 300, DASH_V = 560, DASH_T = .18, MAXFALL = 1100, BASE_LIFE = 4;
 const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
@@ -854,30 +855,26 @@ function shoutBlast(cx, cy, RAD){
   eprojs = eprojs.filter(q => Math.hypot(q.x - cx, q.y - cy) > RAD);
   if (boss && !boss.dead && Math.hypot(boss.x + boss.w / 2 - cx, boss.y + boss.h / 2 - cy) < RAD + 50) bossDamage(1);
 }
-// Lanza el tom en parábola hacia el centro del jefe (si ya no hay jefe, hacia el frente).
+// Lanza el tom hacia el frente en arco (sube ~40 px sobre la cabeza): toca el piso a TOM_RANGE (20% del ancho de pantalla)
+// y se estrella contra lo primero que encuentre: enemigo, jefe, piso, muro o plataforma (una plataforma baja lo detiene).
 function throwTom(p){
-  const sx = p.x + p.w / 2, sy = p.y - 8;
-  let tx = sx + p.face * 260, ty = sy - 60;
-  if (boss && !boss.dead) { tx = boss.x + boss.w / 2; ty = boss.y + boss.h / 2; p.face = tx >= sx ? 1 : -1; }
-  const T = Math.max(.45, Math.min(.9, Math.hypot(tx - sx, ty - sy) / 650));
-  toms.push({ x:sx, y:sy, vx:(tx - sx) / T, vy:(ty - sy) / T - .5 * TOM_G * T, rot:0, t:0, T });
+  const sx = p.x + p.w / 2 + p.face * 6, sy = p.y - 8, D = TOM_RANGE(), dy = (p.y + p.h) - sy;
+  const T = (-TOM_VY + Math.sqrt(TOM_VY * TOM_VY + 2 * TOM_G * dy)) / TOM_G;   // tiempo hasta tocar el piso
+  toms.push({ x:sx, y:sy, sx:p.x + p.w / 2, vx:p.face * D / T, vy:TOM_VY, rot:0, t:0 });
 }
 function updateToms(dt){
+  const solidAt = (x, y) => isSolid(Math.floor(x / TS), Math.floor(y / TS));
   toms = toms.filter(m => {
-    m.t += dt;
-    const chase = boss && !boss.dead;
-    if (chase) {   // el jefe se mueve: se recalcula la parábola cada cuadro para que el tom le llegue (atraviesa las plataformas)
-      const Tr = Math.max(.08, m.T - m.t), tx = boss.x + boss.w / 2, ty = boss.y + boss.h / 2;
-      m.vx = (tx - m.x) / Tr; m.vy = (ty - m.y) / Tr - .5 * TOM_G * Tr;
-    }
-    m.vy += TOM_G * dt; m.x += m.vx * dt; m.y += m.vy * dt; m.rot += dt * 12 * Math.sign(m.vx || 1);
-    const box = { x:m.x - 11, y:m.y - 8, w:22, h:16 };
-    const hit = m.t > 2.2 || (!chase && isSolid(Math.floor(m.x / TS), Math.floor(m.y / TS)))
-      || (chase && overlap(box, boss))
-      || ents.some(e => (e.t === 'E' || e.t === 'F') && !e.dead && overlap(box, e));
+    m.t += dt; m.vy += TOM_G * dt; m.x += m.vx * dt; m.y += m.vy * dt; m.rot += dt * 12 * Math.sign(m.vx || 1);
+    const box = { x:m.x - 16, y:m.y - 12, w:32, h:24 }, fx = m.x + Math.sign(m.vx) * 14;   // caja del tom dibujado a 1,5×
+    const sweep = { ...box, h:box.h + 48 };   // con los enemigos la caja baja 48 px: el arco pasa por encima de los posers y aun así los golpea
+    const hit = m.t > 2 || Math.abs(m.x - m.sx) >= TOM_RANGE()                       // alcance máximo
+      || solidAt(m.x, m.y) || solidAt(fx, m.y) || solidAt(m.x, m.y + (m.vy < 0 ? -11 : 11))  // no atraviesa plataformas ni muros
+      || (boss && !boss.dead && overlap(box, boss))
+      || ents.some(e => (e.t === 'E' || e.t === 'F') && !e.dead && overlap(sweep, e));
     if (!hit) return true;
     burst(m.x, m.y, '#e0b04a', 16, 260); burst(m.x, m.y, '#e8e2d0', 8, 180);
-    SFX.shout(); shoutBlast(m.x, m.y, TOM_RAD);
+    SFX.shout(); shoutBlast(m.x, m.y, TOM_RAD);                                        // mismo daño del grito, 15% menos alcance
     return false;
   });
 }
