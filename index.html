@@ -207,7 +207,7 @@ body.isEnding #rotate{display:none!important}
         <span><kbd>↓</kbd></span><span>Agacharse (en el piso)</span>
         <span><kbd>X</kbd></span><span>Riff (ataque)</span>
         <span><kbd>C</kbd> <kbd>SHIFT</kbd></span><span>Dash</span>
-        <span><kbd>V</kbd></span><span>Grito gutural (en la batalla final: con Rodrigo lanza un tom, con Andrés una onda de bajo)</span>
+        <span><kbd>V</kbd></span><span>Grito gutural (en la batalla final: con Rodrigo lanza un tom, con Andrés una onda de bajo, con Sergio a Aki)</span>
         <span><kbd>Q</kbd></span><span>Cambiar de personaje (o toca los retratos arriba a la izquierda)</span>
         <span><kbd>P</kbd> <kbd>ESC</kbd></span><span>Pausa · <kbd>M</kbd> sonido</span>
       </div>
@@ -684,6 +684,12 @@ const tomMode = () => hero === TOM_HERO && cur === 6 && boss && !boss.dead;
    Al jefe solo le llega cuando va por encima de la altura de la franja (p. ej. disparando desde la plataforma central). */
 const WAVE_HERO = 3, WAVE_WIND = .3, WAVE_SPEED = 620, WAVE_H = 70, WAVE_RANGE = () => VW * .4;
 const waveMode = () => hero === WAVE_HERO && cur === 6 && boss && !boss.dead;
+/* Poder especial de Sergio (guitarrista de backup) en la batalla final: saca a Aki, una shih tzu color arena, que salta hacia
+   adelante en un arco corto (15% del ancho de pantalla), gira en el aire y da un zarpazo que explota al final del arco
+   (o antes si choca con un enemigo, el jefe o una plataforma). Explosión chica: 60% del área del tom.
+   Todos los poderes especiales hacen el mismo daño: el del grito (shoutBlast). */
+const AKI_HERO = 0, AKI_WIND = .25, AKI_RAD = TOM_RAD * .6, AKI_RANGE = () => VW * .15, AKI_G = 1100, AKI_PEAK = 56;
+const akiMode = () => hero === AKI_HERO && cur === 6 && boss && !boss.dead;
 const G = 1800, RUN = 220, JUMP = 620, DJUMP = 560, WJ_VY = 580, WJ_VX = 300, DASH_V = 560, DASH_T = .18, MAXFALL = 1100, BASE_LIFE = 4;
 const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
 const GRAB = new Set(['#', '=', 'B', 'O', 'o']);
@@ -831,7 +837,7 @@ function bossRecoverPct(pct){
   return Math.min(1, pct + bonus);
 }
 let state = 'menu', cur = 0, powers = 0, grid = null, W = 0, H = 0;
-let ents = [], parts = [], projs = [], eprojs = [], toms = [], waves = [], signs = [], boss = null;
+let ents = [], parts = [], projs = [], eprojs = [], toms = [], waves = [], akis = [], slashes = [], signs = [], boss = null;
 const loose = new Map(), gateAnim = new Map();
 let P = null, spawn = null, checkpoint = null, lastSafe = null;
 const cam = { x:0, y:0 };
@@ -846,7 +852,7 @@ const R = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 
 function newPlayer(pos){
   return { x:pos.x, y:pos.y, w:20, h:44, vx:0, vy:0, face:1, onGround:false, state:'normal', life:maxLife(), invuln:0,
-    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, waveT:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
+    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, waveT:0, akiT:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
     anim:0, hangDir:1, climbT:0, cx0:0, cy0:0, cx1:0, cy1:0, atkHit:new Set(), dashHit:new Set(), wall:0 };
 }
 
@@ -862,7 +868,7 @@ function loadLevel(i){
   cur = i; const d = LEVEL_DATA[i];
   H = d.rows.length; W = Math.max(...d.rows.map(r => r.length));
   grid = d.rows.map(r => r.padEnd(W, '.').split(''));
-  ents = []; parts = []; projs = []; eprojs = []; toms = []; waves = []; loose.clear(); gateAnim.clear(); boss = null; shoutFx = null;
+  ents = []; parts = []; projs = []; eprojs = []; toms = []; waves = []; akis = []; slashes = []; loose.clear(); gateAnim.clear(); boss = null; shoutFx = null;
   signs = d.signs.map(s => ({ x:s[0], y:s[1], text:s[2] }));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = grid[y][x], px = x * TS, py = y * TS;
@@ -1058,11 +1064,13 @@ function updatePlayer(dt){
   if (pressed('shout') && has(5) && p.shoutCD <= 0) {
     p.shoutCD = 2.4;
     if (tomMode()) { p.tomT = TOM_WIND; SFX.dash(); }                     // Rodrigo levanta el tom; lo suelta al acabar TOM_WIND
-    else if (waveMode()) { p.waveT = WAVE_WIND; SFX.dash(); }            // Andrés planta el bajo; la onda sale al acabar WAVE_WIND
+    else if (waveMode()) { p.waveT = WAVE_WIND; SFX.dash(); }
+    else if (akiMode()) { p.akiT = AKI_WIND; SFX.pick(); }              // Sergio saca a Aki; sale disparada al acabar AKI_WIND            // Andrés planta el bajo; la onda sale al acabar WAVE_WIND
     else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); }
   }
   if (p.tomT > 0) { p.tomT -= dt; if (p.tomT <= 0) throwTom(p); }
   if (p.waveT > 0) { p.waveT -= dt; if (p.waveT <= 0) launchWave(p); }
+  if (p.akiT > 0) { p.akiT -= dt; if (p.akiT <= 0) launchAki(p); }
 }
 // Efecto del grito en (cx, cy) con alcance RAD: lo usan el grito gutural y el impacto del tom.
 function shoutBlast(cx, cy, RAD){
@@ -1129,6 +1137,41 @@ function drawWaves(){
     ctx.globalAlpha = .35 * k; R(ctx, '#7fd1ff', Math.min(w.x, w.x - w.dir * len), w.fy - 5, len, 5);   // cresta sobre el piso
     ctx.globalAlpha = 1;
   }
+}
+// Aki: salta en arco hacia adelante, gira una vuelta completa y explota al final con un zarpazo.
+function launchAki(p){
+  const dir = p.face, sx = p.x + p.w / 2 + dir * 10, sy = p.y + p.h - 12, vy0 = -Math.sqrt(2 * AKI_G * AKI_PEAK), T = 2 * -vy0 / AKI_G;
+  akis.push({ x:sx, y:sy, sy, sx, dir, vx:dir * AKI_RANGE() / T, vy:vy0, T, t:0 });
+  SFX.dash();
+}
+function akiBoom(m){
+  burst(m.x, m.y, '#e6c690', 14, 240); burst(m.x, m.y, '#fff', 8, 200);
+  slashes.push({ x:m.x, y:m.y, t:0 });
+  SFX.hit(); SFX.shout(); shoutBlast(m.x, m.y, AKI_RAD);                       // mismo daño que el grito, área chica
+}
+function updateAkis(dt){
+  slashes = slashes.filter(f => (f.t += dt) < .32);
+  akis = akis.filter(m => {
+    m.t += dt; m.vy += AKI_G * dt; m.x += m.vx * dt; m.y += m.vy * dt;
+    const box = { x:m.x - 13, y:m.y - 10, w:26, h:20 }, sweep = { ...box, h:box.h + 48 };
+    const hit = m.t >= m.T || isSolid(Math.floor(m.x / TS), Math.floor(m.y / TS)) || isSolid(Math.floor((m.x + m.dir * 12) / TS), Math.floor(m.y / TS))
+      || (boss && !boss.dead && overlap(box, boss))
+      || ents.some(e => (e.t === 'E' || e.t === 'F') && !e.dead && overlap(sweep, e));
+    if (!hit) return true;
+    akiBoom(m); return false;
+  });
+}
+// Aki (pixel art, mira a la derecha), centrada en (0, 0): shih tzu color arena
+function drawAki(g){
+  R(g, '#d6ae74', -9, -4, 16, 9);                                  // cuerpo
+  R(g, '#e6c690', -9, 2, 16, 3);                                   // pelo largo de la panza
+  R(g, '#e6c690', -13, -9, 4, 7); R(g, '#d6ae74', -12, -6, 3, 4);  // cola enroscada
+  R(g, '#c79c62', -7, 5, 3, 3); R(g, '#c79c62', 2, 5, 3, 3);       // patas
+  R(g, '#d6ae74', 5, -8, 10, 10);                                  // cabeza
+  R(g, '#e6c690', 6, -11, 6, 3);                                   // moñito
+  R(g, '#a67c45', 3, -6, 3, 11);                                   // oreja caída
+  R(g, '#f3e3c3', 11, -1, 5, 4);                                   // hocico claro
+  R(g, '#111', 10, -5, 2, 2); R(g, '#111', 14, -2, 2, 2);          // ojo y nariz
 }
 // Tom de batería (pixel art) centrado en (0, 0)
 function drawTom(g){
@@ -1374,7 +1417,7 @@ function step(dt){
   if (state === 'dead') { deadT -= dt; updateParts(dt); if (taunt && (taunt.t -= dt) <= 0) taunt = null; if (deadT <= 0) respawn(); return; }
   introT = Math.max(0, introT - dt);
   if (state === 'play') updatePlayer(dt);
-  updateEnts(dt); updateBoss(dt); updateProjs(dt); updateToms(dt); updateWaves(dt); updateLoose(dt); updateParts(dt);
+  updateEnts(dt); updateBoss(dt); updateProjs(dt); updateToms(dt); updateWaves(dt); updateAkis(dt); updateLoose(dt); updateParts(dt);
   if (state === 'play') checkInteractions();
   if (state === 'bossdown') { bossDownT -= dt; if (bossDownT <= 0) showEnding(); }
   if (state === 'play' || state === 'bossdown') updateCam(dt);
@@ -1384,7 +1427,7 @@ function step(dt){
     tauntT -= dt;
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
-  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
+  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : akiMode() ? 'AKI' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
   if (taunt && !taunt.big) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
 }
 let last = performance.now(), acc = 0;
@@ -1597,6 +1640,12 @@ function drawProjs(){
     ctx.fillStyle = '#ff5cc6'; ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill(); R(ctx, '#fff', q.x - 2, q.y - 2, 3, 3);
   }
   drawWaves();
+  for (const m of akis) { ctx.save(); ctx.translate(Math.round(m.x), Math.round(m.y)); ctx.scale(m.dir * 1.3, 1.3); ctx.rotate(-(m.t / m.T) * Math.PI * 2); drawAki(ctx); ctx.restore(); }   // gira una vuelta en el aire
+  for (const f of slashes) {                                                                   // zarpazo: tres rayas
+    const k = f.t / .32; ctx.globalAlpha = 1 - k; ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineWidth = 4;
+    for (let i = -1; i <= 1; i++) { const x = f.x + i * 15, y0 = f.y - 30 + i * 3; ctx.beginPath(); ctx.moveTo(x - 14, y0); ctx.lineTo(x - 14 + 28 * Math.min(1, k * 3), y0 + 56 * Math.min(1, k * 3)); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
   for (const m of toms) { ctx.save(); ctx.translate(Math.round(m.x), Math.round(m.y)); ctx.rotate(m.rot); ctx.scale(1.5, 1.5); drawTom(ctx); ctx.restore(); }
 }
 function drawWeapon(g, inst, a, col){
@@ -1620,10 +1669,12 @@ function drawPlayer(){
   const H = hero >= 0 ? BAND[hero] : null, inst = H ? H.inst : 'guitar', col = H ? H.col : '#b3122a';
   const look = H ? { ...H.look, hair:H.hair, shirt:H.shirt, logo:H.col } : {};
   let back = null, front = null;
+  const call = p.akiT > 0 && pose !== 'hang';
   const plant = p.waveT > 0 && pose !== 'hang';
   if (plant) pose = 'crouch';
   const lift = p.tomT > 0 && pose !== 'hang';                      // Rodrigo con el tom sobre la cabeza
-  if (plant) front = g => { g.save(); g.translate(0, 0); drawGuitar(g, 6, 22 + Math.round(Math.sin(p.waveT * 90) * 1.5), 0, col, 32); g.restore(); };
+  if (call) front = g => { g.save(); g.translate(18, 38 - Math.round(Math.sin(p.akiT * 40) * 1.5)); drawAki(g); g.restore(); };   // Sergio saca a Aki
+  else if (plant) front = g => { g.save(); g.translate(0, 0); drawGuitar(g, 6, 22 + Math.round(Math.sin(p.waveT * 90) * 1.5), 0, col, 32); g.restore(); };
   else if (lift) front = g => { g.save(); g.translate(1, -12 + Math.round(p.tomT / TOM_WIND * 6)); drawTom(g); g.restore(); };
   else if (atk) front = g => {
     drawWeapon(g, inst, -1.9 + k * 2.6, col);
@@ -1940,7 +1991,7 @@ setTimeout(() => $('menu').classList.remove('intro'), 2200);
 requestAnimationFrame(frame);
 
 // gancho para pruebas
-window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
+window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; }, get akis(){ return akis; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
 })();
 </script>
 
