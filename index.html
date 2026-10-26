@@ -824,6 +824,9 @@ function nextDeathLine(){
   }
   return lastDeathLine = deathBag.pop();
 }
+// Globito sobre el personaje del jugador (por ahora: la frase de César al gritar).
+let playerSay = null;
+const say = (text, t = 1.5) => { playerSay = { text, t, show:t }; };
 let taunt = null, tauntT = TAUNT_FIRST, tauntBag = [], tauntLow = false, lastTaunt = '';
 function nextTaunt(){
   const low = !!(boss && boss.hp <= boss.max * TAUNT_LOW_PCT);
@@ -901,7 +904,7 @@ function loadLevel(i){
   buildHeroBar();
   P = newPlayer(spawn); checkpoint = { ...spawn }; lastSafe = { ...spawn };
   if (levelLife != null) P.life = Math.max(1, Math.min(maxLife(), levelLife));
-  bg = makeBg(i); introT = 2.6; state = 'play'; taunt = null; tauntT = TAUNT_FIRST;
+  bg = makeBg(i); introT = 2.6; state = 'play'; taunt = null; playerSay = null; tauntT = TAUNT_FIRST;
   cam.x = P.x - VW / 2; cam.y = P.y - VH / 2; clampCam();
   Synth.bpm = i === 6 ? 170 : 150;
   showUI('play');
@@ -1085,7 +1088,7 @@ function updatePlayer(dt){
     else if (beerMode()) { p.beerT = BEER_WIND + BEER_SPRAY; p.beerOn = false; SFX.dash(); }   // Fabián levanta el barril; lo abre a los BEER_WIND
     else if (leoMode()) startLeap(p);
     else if (akiMode()) { p.akiT = AKI_WIND; SFX.pick(); }              // Sergio saca a Aki; sale disparada al acabar AKI_WIND            // Andrés planta el bajo; la onda sale al acabar WAVE_WIND
-    else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); }
+    else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); if (hero === 5) say('Me voy, me vooooy'); }   // César grita su frase
   }
   if (p.tomT > 0) { p.tomT -= dt; if (p.tomT <= 0) throwTom(p); }
   if (p.waveT > 0) { p.waveT -= dt; if (p.waveT <= 0) launchWave(p); }
@@ -1500,6 +1503,7 @@ function step(dt){
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
   const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : akiMode() ? 'AKI' : beerMode() ? 'BARRIL' : leoMode() ? 'GOLPE' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
+  if (playerSay && (playerSay.t -= dt) <= 0) playerSay = null;
   if (taunt && !taunt.big) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
 }
 let last = performance.now(), acc = 0;
@@ -1784,6 +1788,20 @@ function drawTaunt(){
   lines.forEach((l, i) => { const y = by + 25 + (i + 1) * lh - 4; ctx.fillStyle = '#000'; ctx.fillText(l, bx + bw / 2 + 2, y + 2); ctx.fillStyle = '#fff'; ctx.fillText(l, bx + bw / 2, y); });
   ctx.textAlign = 'left'; ctx.restore();
 }
+function drawSay(){
+  // Globito blanco sobre la cabeza del jugador, con la colita hacia él; sale con un pequeño rebote y se desvanece al final.
+  const age = playerSay.show - playerSay.t, a = Math.min(1, age / .08, playerSay.t / .3), pop = 1 + Math.max(0, .12 - age) * 1.5;
+  const px = P.x + P.w / 2 - cam.x, py = P.y - cam.y - 10;
+  ctx.font = '26px VT323, monospace';
+  const tw = Math.ceil(ctx.measureText(playerSay.text).width), bw = tw + 22, bh = 30;
+  const bx = Math.max(8, Math.min(VW - bw - 8, px - bw / 2)), by = py - bh - 12, tx = Math.max(bx + 14, Math.min(bx + bw - 14, px));
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(tx, py); ctx.scale(pop, pop); ctx.translate(-tx, -py);
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#111'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(tx - 7, by + bh); ctx.lineTo(px, py); ctx.lineTo(tx + 7, by + bh); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh); ctx.fillRect(tx - 6, by + bh - 2, 12, 5);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#1a0d10'; ctx.fillText(playerSay.text, bx + bw / 2, by + 22);
+  ctx.textAlign = 'left'; ctx.restore();
+}
 function wrapText(text, maxW){
   const words = text.split(' '), lines = []; let line = '';
   for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }
@@ -1885,6 +1903,7 @@ function render(){
     ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   }
   if (taunt && (state === 'play' || state === 'dead')) drawTaunt();
+  if (playerSay && state === 'play') drawSay();
   if (flashT > 0) { ctx.globalAlpha = flashT; R(ctx, '#d4223a', 0, 0, VW, VH); ctx.globalAlpha = 1; }
   if (state === 'dead' && !(taunt && taunt.big)) {   // en celular primero habla el Silenciador y luego sale esta pantalla
     ctx.globalAlpha = .6; R(ctx, '#000', 0, 0, VW, VH); ctx.globalAlpha = 1;
@@ -2069,7 +2088,7 @@ setTimeout(() => $('menu').classList.remove('intro'), 2200);
 requestAnimationFrame(frame);
 
 // gancho para pruebas
-window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; }, get akis(){ return akis; }, get beers(){ return beers; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
+window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; }, get akis(){ return akis; }, get say(){ return playerSay; }, get beers(){ return beers; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
 })();
 </script>
 
