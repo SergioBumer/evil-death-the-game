@@ -494,7 +494,7 @@ const tomMode = () => hero === TOM_HERO && cur === 6 && boss && !boss.dead;
 /* Poder especial de Andrés (bajista) en la batalla final: golpea la cuerda grave y manda una onda expansiva horizontal a ras
    de piso. Atraviesa y golpea a varios enemigos (mismo daño del grito), rompe proyectiles y hace temblar el juego.
    Al jefe solo le llega cuando va por encima de la altura de la franja (p. ej. disparando desde la plataforma central). */
-const WAVE_HERO = 3, WAVE_WIND = .3, WAVE_SPEED = 620, WAVE_H = 70, WAVE_RANGE = () => VW * .4;
+const WAVE_HERO = 3, WAVE_WIND = .3, WAVE_SPEED = 620, WAVE_H = 70, WAVE_RANGE = () => VW * .4 * .6;   // alcance: 24% del ancho (antes 40%)
 const waveMode = () => hero === WAVE_HERO && cur === 6 && boss && !boss.dead;
 /* Poder especial de Sergio (guitarrista de backup) en la batalla final: saca a Aki, una shih tzu color arena, que salta hacia
    adelante en un arco corto (15% del ancho de pantalla), gira en el aire y da un zarpazo que explota al final del arco
