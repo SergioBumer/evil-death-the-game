@@ -929,10 +929,10 @@ function updateToms(dt){
   const solidAt = (x, y) => isSolid(Math.floor(x / TS), Math.floor(y / TS));
   toms = toms.filter(m => {
     m.t += dt; m.vy += TOM_G * dt; m.x += m.vx * dt; m.y += m.vy * dt; m.rot += dt * 12 * Math.sign(m.vx || 1);
-    const box = { x:m.x - 16, y:m.y - 12, w:32, h:24 }, fx = m.x + Math.sign(m.vx) * 14;   // caja del tom dibujado a 1,5×
+    const box = { x:m.x - 13, y:m.y - 10, w:26, h:20 }, fx = m.x + Math.sign(m.vx) * 11;   // caja del tom dibujado a 1,2× (20% menos que antes)
     const sweep = { ...box, h:box.h + 48 };   // con los enemigos la caja baja 48 px: el arco pasa por encima de los posers y aun así los golpea
     const hit = m.t > 2 || Math.abs(m.x - m.sx) >= TOM_RANGE()                       // alcance máximo
-      || solidAt(m.x, m.y) || solidAt(fx, m.y) || solidAt(m.x, m.y + (m.vy < 0 ? -11 : 11))  // no atraviesa plataformas ni muros
+      || solidAt(m.x, m.y) || solidAt(fx, m.y) || solidAt(m.x, m.y + (m.vy < 0 ? -9 : 9))  // no atraviesa plataformas ni muros
       || (boss && !boss.dead && overlap(box, boss))
       || ents.some(e => (e.t === 'E' || e.t === 'F') && !e.dead && overlap(sweep, e));
     if (!hit) return true;
@@ -1530,7 +1530,7 @@ function drawProjs(){
     for (let i = -1; i <= 1; i++) { const x = f.x + i * 15, y0 = f.y - 30 + i * 3; ctx.beginPath(); ctx.moveTo(x - 14, y0); ctx.lineTo(x - 14 + 28 * Math.min(1, k * 3), y0 + 56 * Math.min(1, k * 3)); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
-  for (const m of toms) { ctx.save(); ctx.translate(Math.round(m.x), Math.round(m.y)); ctx.rotate(m.rot); ctx.scale(1.5, 1.5); drawTom(ctx); ctx.restore(); }
+  for (const m of toms) { ctx.save(); ctx.translate(Math.round(m.x), Math.round(m.y)); ctx.rotate(m.rot); ctx.scale(1.2, 1.2); drawTom(ctx); ctx.restore(); }
 }
 function drawWeapon(g, inst, a, col){
   // arma en la mano durante el ataque: a = ángulo del golpe
