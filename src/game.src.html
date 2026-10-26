@@ -192,7 +192,7 @@ body.isEnding #rotate{display:none!important}
         <span><kbd>↓</kbd></span><span>Agacharse (en el piso)</span>
         <span><kbd>X</kbd></span><span>Riff (ataque)</span>
         <span><kbd>C</kbd> <kbd>SHIFT</kbd></span><span>Dash</span>
-        <span><kbd>V</kbd></span><span>Grito gutural (en la batalla final: con Rodrigo lanza un tom, con Andrés una onda de bajo, con Sergio a Aki, con Fabián un barril de cerveza)</span>
+        <span><kbd>V</kbd></span><span>Grito gutural (en la batalla final: con Rodrigo lanza un tom, con Andrés una onda de bajo, con Sergio a Aki, con Fabián un barril de cerveza, con Leo un guitarrazo)</span>
         <span><kbd>Q</kbd></span><span>Cambiar de personaje (o toca los retratos arriba a la izquierda)</span>
         <span><kbd>P</kbd> <kbd>ESC</kbd></span><span>Pausa · <kbd>M</kbd> sonido</span>
       </div>
@@ -506,6 +506,10 @@ const akiMode = () => hero === AKI_HERO && cur === 6 && boss && !boss.dead;
    presión en horizontal, hasta el 20% del ancho de pantalla. Atraviesa y golpea a varios (mismo daño que todos los poderes). */
 const BEER_HERO = 2, BEER_WIND = .35, BEER_SPRAY = .55, BEER_RANGE = () => VW * .2, BEER_H = 34;
 const beerMode = () => hero === BEER_HERO && cur === 6 && boss && !boss.dead;
+/* Poder especial de Leo (guitarra líder II) en la batalla final: salta hacia adelante con la guitarra en alto y la estrella
+   contra el suelo: onda expansiva a ambos lados a ras de piso (mismo daño que todos los poderes). */
+const LEO_HERO = 4, LEO_VY = 520, LEO_DIST = () => VW * .15, LEO_T = () => 2 * LEO_VY / G, LEO_RANGE = () => VW * .2;
+const leoMode = () => hero === LEO_HERO && cur === 6 && boss && !boss.dead;
 const G = 1800, RUN = 220, JUMP = 620, DJUMP = 560, WJ_VY = 580, WJ_VX = 300, DASH_V = 560, DASH_T = .18, MAXFALL = 1100, BASE_LIFE = 4;
 const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
 const GRAB = new Set(['#', '=', 'B', 'O', 'o']);
@@ -668,7 +672,7 @@ const R = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 
 function newPlayer(pos){
   return { x:pos.x, y:pos.y, w:20, h:44, vx:0, vy:0, face:1, onGround:false, state:'normal', life:maxLife(), invuln:0,
-    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, waveT:0, akiT:0, beerT:0, beerOn:false, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
+    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, waveT:0, akiT:0, beerT:0, beerOn:false, slamT:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
     anim:0, hangDir:1, climbT:0, cx0:0, cy0:0, cx1:0, cy1:0, atkHit:new Set(), dashHit:new Set(), wall:0 };
 }
 
@@ -790,7 +794,7 @@ function burst(x, y, c, n=12, sp=260){
 function updatePlayer(dt){
   const p = P;
   p.invuln = Math.max(0, p.invuln - dt);
-  p.atkCD -= dt; p.dashCD -= dt; p.shoutCD -= dt; p.grabCD -= dt; p.wjLock -= dt; p.atkT -= dt; p.coyote -= dt; p.jbuf -= dt;
+  p.atkCD -= dt; p.dashCD -= dt; p.shoutCD -= dt; p.grabCD -= dt; p.wjLock -= dt; p.atkT -= dt; p.coyote -= dt; p.jbuf -= dt; p.slamT -= dt;
   p.anim += dt;
   if (pressed('jump')) p.jbuf = .13;
   if (pressed('swap')) { const opts = heroOptions(); setHero(opts[(opts.indexOf(hero) + 1) % opts.length], false); }
@@ -813,6 +817,15 @@ function updatePlayer(dt){
     const blocked = moveX(p, p.face * DASH_V * dt);
     parts.push({ x:p.x + p.w / 2, y:p.y + 10 + Math.random() * 28, vx:-p.face * 60, vy:0, life:.25, max:.25, c:BAND[2].col, w:10, h:2, g:0 });
     if (p.dashT <= 0 || blocked) { p.state = 'normal'; p.vx = p.face * RUN * .9; }
+    return;
+  }
+
+  if (p.state === 'leap') {                                   // Leo: salto hacia adelante; al caer estrella la guitarra
+    p.vy = Math.min(p.vy + G * dt, MAXFALL);
+    if (moveX(p, p.vx * dt)) p.vx = 0;
+    const r = moveY(p, p.vy * dt);
+    if (r === 1) { p.onGround = true; p.vy = 0; p.vx = 0; p.state = 'normal'; p.coyote = .08; p.airJumps = has(1) ? 1 : 0; p.airDashed = false; leoSlam(p); }
+    else { if (r === -1) p.vy = 0; p.onGround = false; }
     return;
   }
 
@@ -882,6 +895,7 @@ function updatePlayer(dt){
     if (tomMode()) { p.tomT = TOM_WIND; SFX.dash(); }                     // Rodrigo levanta el tom; lo suelta al acabar TOM_WIND
     else if (waveMode()) { p.waveT = WAVE_WIND; SFX.dash(); }
     else if (beerMode()) { p.beerT = BEER_WIND + BEER_SPRAY; p.beerOn = false; SFX.dash(); }   // Fabián levanta el barril; lo abre a los BEER_WIND
+    else if (leoMode()) startLeap(p);
     else if (akiMode()) { p.akiT = AKI_WIND; SFX.pick(); }              // Sergio saca a Aki; sale disparada al acabar AKI_WIND            // Andrés planta el bajo; la onda sale al acabar WAVE_WIND
     else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); }
   }
@@ -943,7 +957,7 @@ function updateWaves(dt){
     eprojs = eprojs.filter(q => !overlap(box, { x:q.x - 6, y:q.y - 6, w:12, h:12 }) || (burst(q.x, q.y, '#7fd1ff', 6, 140), false));
     if ((w.dust -= dt) <= 0) { w.dust = .05; burst(w.x, w.fy - 3, '#bfb4a0', 3, 120); }
     const wall = isSolid(Math.floor((w.x + w.dir * 12) / TS), Math.floor((w.fy - 12) / TS));    // un muro la frena
-    return !wall && Math.abs(w.x - w.x0) < WAVE_RANGE();
+    return !wall && Math.abs(w.x - w.x0) < (w.range || WAVE_RANGE());
   });
 }
 function drawWaves(){
@@ -953,10 +967,10 @@ function drawWaves(){
       const off = i * 38 + ((w.t * 160) % 38), px = w.x - w.dir * off;
       if (off > len + 24) continue;
       const a = (1 - off / (len + 24)) * k, h = WAVE_H * (1 - i * .09);
-      ctx.globalAlpha = a; ctx.strokeStyle = i % 2 ? '#bff0ff' : '#7fd1ff'; ctx.lineWidth = 4;
+      ctx.globalAlpha = a; ctx.strokeStyle = i % 2 ? (w.col2 || '#bff0ff') : (w.col || '#7fd1ff'); ctx.lineWidth = 4;
       ctx.beginPath(); ctx.ellipse(px, w.fy - h / 2, 9, h / 2, 0, -Math.PI / 2, Math.PI / 2, w.dir < 0); ctx.stroke();
     }
-    ctx.globalAlpha = .35 * k; R(ctx, '#7fd1ff', Math.min(w.x, w.x - w.dir * len), w.fy - 5, len, 5);   // cresta sobre el piso
+    ctx.globalAlpha = .35 * k; R(ctx, w.col || '#7fd1ff', Math.min(w.x, w.x - w.dir * len), w.fy - 5, len, 5);   // cresta sobre el piso
     ctx.globalAlpha = 1;
   }
 }
@@ -982,6 +996,18 @@ function updateAkis(dt){
     if (!hit) return true;
     akiBoom(m); return false;
   });
+}
+// Leo: arranca el salto hacia adelante (15% del ancho de pantalla) con la guitarra en alto.
+function startLeap(p){
+  if (p.crouch) { p.crouch = false; p.y -= CROUCH_DY; p.h = 44; }
+  p.state = 'leap'; p.onGround = false; p.vy = -LEO_VY; p.vx = p.face * LEO_DIST() / LEO_T(); SFX.jump();
+}
+// Guitarrazo contra el suelo: dos ondas (una a cada lado) que comparten el registro de golpes: nada recibe daño doble.
+function leoSlam(p){
+  const x0 = p.x + p.w / 2, fy = p.y + p.h, hit = new Set(), col = BAND[4].col;
+  for (const dir of [-1, 1]) waves.push({ x0:x0 + dir * 8, x:x0 + dir * 8, dir, fy, t:0, hit, dust:0, range:LEO_RANGE(), col, col2:'#e3d2ff' });
+  p.slamT = .3; SFX.wave(); SFX.hit(); shake = 24;
+  burst(x0, fy - 4, '#bfb4a0', 18, 260); burst(x0, fy - 8, col, 10, 220);
 }
 // Fabián: chorro de cerveza a presión en horizontal. Sale del grifo del barril y sigue a Fabián mientras dura.
 function updateBeers(dt){
@@ -1285,7 +1311,7 @@ function step(dt){
     tauntT -= dt;
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
-  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : akiMode() ? 'AKI' : beerMode() ? 'BARRIL' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
+  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : akiMode() ? 'AKI' : beerMode() ? 'BARRIL' : leoMode() ? 'GOLPE' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
   if (taunt && !taunt.big) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
 }
 let last = performance.now(), acc = 0;
@@ -1529,11 +1555,14 @@ function drawPlayer(){
   let back = null, front = null;
   const call = p.akiT > 0 && pose !== 'hang';
   const beerWind = p.beerT > BEER_SPRAY && pose !== 'hang', beerSpray = p.beerT > 0 && p.beerT <= BEER_SPRAY && pose !== 'hang';
+  const leap = p.state === 'leap', slam = p.slamT > 0 && pose !== 'hang';
   const plant = p.waveT > 0 && pose !== 'hang';
   if (plant) pose = 'crouch';
   const lift = p.tomT > 0 && pose !== 'hang';                      // Rodrigo con el tom sobre la cabeza
   if (beerWind) front = g => { g.save(); g.translate(2, -12 + Math.round((p.beerT - BEER_SPRAY) / BEER_WIND * 6)); drawBarrel(g); g.restore(); };   // barril sobre la cabeza
   else if (beerSpray) front = g => { g.save(); g.translate(14, 18 + Math.round(Math.sin(p.beerT * 70))); drawBarrel(g); g.restore(); };   // barril a la altura del pecho, grifo abierto
+  else if (leap) front = g => drawGuitar(g, 6, 8, -2.7, col, 24);       // guitarra en alto durante el salto
+  else if (slam) front = g => drawGuitar(g, 9, 22, 1.45, col, 26);      // guitarra contra el suelo
   else if (call) front = g => { g.save(); g.translate(18, 38 - Math.round(Math.sin(p.akiT * 40) * 1.5)); drawAki(g); g.restore(); };   // Sergio saca a Aki
   else if (plant) front = g => { g.save(); g.translate(0, 0); drawGuitar(g, 6, 22 + Math.round(Math.sin(p.waveT * 90) * 1.5), 0, col, 32); g.restore(); };
   else if (lift) front = g => { g.save(); g.translate(1, -12 + Math.round(p.tomT / TOM_WIND * 6)); drawTom(g); g.restore(); };
@@ -1544,7 +1573,7 @@ function drawPlayer(){
   else if (inst === 'sticks') front = g => drawInstrument(g, H, p.anim);
   else if (inst === 'mic') front = g => { R(g, '#555', 9, 6, 2, 24); R(g, '#bfc4cc', 7, 2, 6, 5); };   // pie de micrófono en la mano
   else back = g => drawGuitar(g, -5, 20, -2.25, col, inst === 'bass' ? 28 : 24);
-  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { ...look, pose, leg, sway, armUp:inst === 'mic' && !atk && pose !== 'hang', armsUp:lift || beerWind, back, front });
+  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { ...look, pose, leg, sway, armUp:inst === 'mic' && !atk && pose !== 'hang', armsUp:lift || beerWind || leap, back, front });
 }
 function drawTaunt(){
   // Globo de diálogo pegado al Silenciador: lo sigue por la pantalla, así sale a su lado izquierdo o derecho.
