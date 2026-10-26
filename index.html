@@ -691,8 +691,8 @@ const waveMode = () => hero === WAVE_HERO && cur === 6 && boss && !boss.dead;
 const AKI_HERO = 0, AKI_WIND = .25, AKI_RAD = TOM_RAD * .6, AKI_RANGE = () => VW * .15, AKI_G = 1100, AKI_PEAK = 56;
 const akiMode = () => hero === AKI_HERO && cur === 6 && boss && !boss.dead;
 /* Poder especial de Fabián (guitarra líder I) en la batalla final: levanta un barril de cerveza, lo abre y sale un chorro a
-   presión en horizontal, hasta el 20% del ancho de pantalla. Atraviesa y golpea a varios (mismo daño que todos los poderes). */
-const BEER_HERO = 2, BEER_WIND = .35, BEER_SPRAY = .55, BEER_RANGE = () => VW * .2, BEER_H = 34;
+   presión en horizontal, hasta el 18% del ancho de pantalla (20% - 10%). Atraviesa y golpea a varios (mismo daño que todos los poderes). */
+const BEER_HERO = 2, BEER_WIND = .35, BEER_SPRAY = .55, BEER_RANGE = () => VW * .2 * .9, BEER_H = 34;
 const beerMode = () => hero === BEER_HERO && cur === 6 && boss && !boss.dead;
 /* Poder especial de Leo (guitarra líder II) en la batalla final: salta hacia adelante con la guitarra en alto y la estrella
    contra el suelo: onda expansiva a ambos lados a ras de piso (mismo daño que todos los poderes). */
