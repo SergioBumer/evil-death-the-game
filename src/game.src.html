@@ -192,7 +192,7 @@ body.isEnding #rotate{display:none!important}
         <span><kbd>↓</kbd></span><span>Agacharse (en el piso)</span>
         <span><kbd>X</kbd></span><span>Riff (ataque)</span>
         <span><kbd>C</kbd> <kbd>SHIFT</kbd></span><span>Dash</span>
-        <span><kbd>V</kbd></span><span>Grito gutural (en la batalla final: con Rodrigo lanza un tom, con Andrés una onda de bajo, con Sergio a Aki)</span>
+        <span><kbd>V</kbd></span><span>Grito gutural (en la batalla final: con Rodrigo lanza un tom, con Andrés una onda de bajo, con Sergio a Aki, con Fabián un barril de cerveza)</span>
         <span><kbd>Q</kbd></span><span>Cambiar de personaje (o toca los retratos arriba a la izquierda)</span>
         <span><kbd>P</kbd> <kbd>ESC</kbd></span><span>Pausa · <kbd>M</kbd> sonido</span>
       </div>
@@ -409,7 +409,7 @@ function chord(root, d, v=.12, when=0, dest=sfxGain){
 const SFX = {
   jump: () => beep(300, .12, 'square', .1, 600), djump: () => beep(450, .14, 'square', .1, 900),
   land: () => noise(.06, .15, 400, 'lowpass'), grab: () => noise(.05, .2, 900, 'bandpass'),
-  riff: () => chord(82.41, .22, .2), wave: () => { beep(41.2, .9, 'sine', .4, 27); chord(41.2, .8, .25); noise(.6, .3, 180, 'lowpass'); }, hit: () => { noise(.1, .3, 800); beep(140, .12, 'square', .12, 60); },
+  riff: () => chord(82.41, .22, .2), beer: () => { noise(.6, .25, 2400, 'highpass'); beep(520, .5, 'sawtooth', .04, 260); }, wave: () => { beep(41.2, .9, 'sine', .4, 27); chord(41.2, .8, .25); noise(.6, .3, 180, 'lowpass'); }, hit: () => { noise(.1, .3, 800); beep(140, .12, 'square', .12, 60); },
   hurt: () => { beep(220, .3, 'sawtooth', .18, 55); noise(.2, .2, 300, 'lowpass'); },
   pick: () => { beep(660, .08, 'square', .1); beep(990, .12, 'square', .1, null, .08); },
   dash: () => noise(.2, .25, 1500, 'bandpass'), brk: () => { noise(.3, .35, 500, 'lowpass'); beep(90, .25, 'square', .18, 40); },
@@ -502,6 +502,10 @@ const waveMode = () => hero === WAVE_HERO && cur === 6 && boss && !boss.dead;
    Todos los poderes especiales hacen el mismo daño: el del grito (shoutBlast). */
 const AKI_HERO = 0, AKI_WIND = .25, AKI_RAD = TOM_RAD * .6, AKI_RANGE = () => VW * .15, AKI_G = 1100, AKI_PEAK = 56;
 const akiMode = () => hero === AKI_HERO && cur === 6 && boss && !boss.dead;
+/* Poder especial de Fabián (guitarra líder I) en la batalla final: levanta un barril de cerveza, lo abre y sale un chorro a
+   presión en horizontal, hasta el 20% del ancho de pantalla. Atraviesa y golpea a varios (mismo daño que todos los poderes). */
+const BEER_HERO = 2, BEER_WIND = .35, BEER_SPRAY = .55, BEER_RANGE = () => VW * .2, BEER_H = 34;
+const beerMode = () => hero === BEER_HERO && cur === 6 && boss && !boss.dead;
 const G = 1800, RUN = 220, JUMP = 620, DJUMP = 560, WJ_VY = 580, WJ_VX = 300, DASH_V = 560, DASH_T = .18, MAXFALL = 1100, BASE_LIFE = 4;
 const SOLID = new Set(['#', '=', 'B', 'G', 'O', 'o']);
 const GRAB = new Set(['#', '=', 'B', 'O', 'o']);
@@ -649,7 +653,7 @@ function bossRecoverPct(pct){
   return Math.min(1, pct + bonus);
 }
 let state = 'menu', cur = 0, powers = 0, grid = null, W = 0, H = 0;
-let ents = [], parts = [], projs = [], eprojs = [], toms = [], waves = [], akis = [], slashes = [], signs = [], boss = null;
+let ents = [], parts = [], projs = [], eprojs = [], toms = [], waves = [], akis = [], slashes = [], beers = [], signs = [], boss = null;
 const loose = new Map(), gateAnim = new Map();
 let P = null, spawn = null, checkpoint = null, lastSafe = null;
 const cam = { x:0, y:0 };
@@ -664,7 +668,7 @@ const R = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 
 function newPlayer(pos){
   return { x:pos.x, y:pos.y, w:20, h:44, vx:0, vy:0, face:1, onGround:false, state:'normal', life:maxLife(), invuln:0,
-    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, waveT:0, akiT:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
+    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, waveT:0, akiT:0, beerT:0, beerOn:false, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
     anim:0, hangDir:1, climbT:0, cx0:0, cy0:0, cx1:0, cy1:0, atkHit:new Set(), dashHit:new Set(), wall:0 };
 }
 
@@ -680,7 +684,7 @@ function loadLevel(i){
   cur = i; const d = LEVEL_DATA[i];
   H = d.rows.length; W = Math.max(...d.rows.map(r => r.length));
   grid = d.rows.map(r => r.padEnd(W, '.').split(''));
-  ents = []; parts = []; projs = []; eprojs = []; toms = []; waves = []; akis = []; slashes = []; loose.clear(); gateAnim.clear(); boss = null; shoutFx = null;
+  ents = []; parts = []; projs = []; eprojs = []; toms = []; waves = []; akis = []; slashes = []; beers = []; loose.clear(); gateAnim.clear(); boss = null; shoutFx = null;
   signs = d.signs.map(s => ({ x:s[0], y:s[1], text:s[2] }));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = grid[y][x], px = x * TS, py = y * TS;
@@ -877,12 +881,18 @@ function updatePlayer(dt){
     p.shoutCD = 2.4;
     if (tomMode()) { p.tomT = TOM_WIND; SFX.dash(); }                     // Rodrigo levanta el tom; lo suelta al acabar TOM_WIND
     else if (waveMode()) { p.waveT = WAVE_WIND; SFX.dash(); }
+    else if (beerMode()) { p.beerT = BEER_WIND + BEER_SPRAY; p.beerOn = false; SFX.dash(); }   // Fabián levanta el barril; lo abre a los BEER_WIND
     else if (akiMode()) { p.akiT = AKI_WIND; SFX.pick(); }              // Sergio saca a Aki; sale disparada al acabar AKI_WIND            // Andrés planta el bajo; la onda sale al acabar WAVE_WIND
     else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); }
   }
   if (p.tomT > 0) { p.tomT -= dt; if (p.tomT <= 0) throwTom(p); }
   if (p.waveT > 0) { p.waveT -= dt; if (p.waveT <= 0) launchWave(p); }
   if (p.akiT > 0) { p.akiT -= dt; if (p.akiT <= 0) launchAki(p); }
+  if (p.beerT > 0) {
+    p.beerT -= dt;
+    if (!p.beerOn && p.beerT <= BEER_SPRAY) { p.beerOn = true; beers.push({ t:0, dir:p.face, hit:new Set(), len:0 }); SFX.beer(); }
+    if (p.beerT <= 0) p.beerOn = false;
+  }
 }
 // Efecto del grito en (cx, cy) con alcance RAD: lo usan el grito gutural y el impacto del tom.
 function shoutBlast(cx, cy, RAD){
@@ -972,6 +982,42 @@ function updateAkis(dt){
     if (!hit) return true;
     akiBoom(m); return false;
   });
+}
+// Fabián: chorro de cerveza a presión en horizontal. Sale del grifo del barril y sigue a Fabián mientras dura.
+function updateBeers(dt){
+  beers = beers.filter(b => {
+    b.t += dt; const p = P;
+    if (state !== 'play') return false;
+    p.face = b.dir;
+    const ox = p.x + p.w / 2 + b.dir * 30, oy = p.y + p.h - 26;
+    b.ox = ox; b.oy = oy; b.len = BEER_RANGE() * Math.min(1, b.t / .1);                  // el chorro sale disparado en 0,1 s
+    const box = { x:b.dir > 0 ? ox : ox - b.len, y:oy - BEER_H / 2, w:b.len, h:BEER_H };
+    for (const e of ents) if ((e.t === 'E' || e.t === 'F') && !e.dead && !b.hit.has(e) && overlap(box, e)) { b.hit.add(e); damage(e, 99, b.dir); }
+    if (boss && !boss.dead && !b.hit.has(boss) && overlap(box, boss)) { b.hit.add(boss); bossDamage(1); }
+    eprojs = eprojs.filter(q => !overlap(box, { x:q.x - 6, y:q.y - 6, w:12, h:12 }) || (burst(q.x, q.y, '#f2b632', 6, 140), false));
+    burst(ox + b.dir * b.len, oy + 4, b.t % .1 < dt ? '#fff3c4' : '#f2b632', 2, 120);   // gotas y espuma al final del chorro
+    return b.t < BEER_SPRAY;
+  });
+}
+function drawBeers(){
+  for (const b of beers) {
+    if (b.ox === undefined) continue;
+    const k = Math.min(1, (BEER_SPRAY - b.t) / .15);
+    ctx.globalAlpha = .3 * k; R(ctx, '#f2b632', b.dir > 0 ? b.ox : b.ox - b.len, b.oy - 10, b.len, 20);
+    ctx.globalAlpha = k;
+    for (let i = 0; i < 30; i++) {
+      const u = (i + ((time * 14) % 1)) / 30, x = b.ox + b.dir * u * b.len, y = b.oy + Math.sin(time * 38 + i * 1.9) * (2 + u * 8);
+      R(ctx, i % 3 === 0 ? '#fff3c4' : i % 2 ? '#ffd666' : '#f2b632', Math.round(x) - 3, Math.round(y) - 3, 6, 6);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+// Barril de cerveza (pixel art), horizontal, centrado en (0, 0), con el grifo a la derecha
+function drawBarrel(g){
+  R(g, '#7a4c22', -11, -8, 22, 16); R(g, '#a87438', -11, -6, 22, 3);                  // duelas
+  R(g, '#3a3a40', -6, -8, 2, 16); R(g, '#3a3a40', 4, -8, 2, 16);                      // aros de hierro
+  R(g, '#c79a5a', 11, -6, 2, 12);                                                     // tapa
+  R(g, '#c9ccd2', 13, -1, 4, 3); R(g, '#e6c24a', 14, -4, 2, 3);                       // grifo
 }
 // Aki (pixel art, mira a la derecha), centrada en (0, 0): shih tzu color arena
 function drawAki(g){
@@ -1229,7 +1275,7 @@ function step(dt){
   if (state === 'dead') { deadT -= dt; updateParts(dt); if (taunt && (taunt.t -= dt) <= 0) taunt = null; if (deadT <= 0) respawn(); return; }
   introT = Math.max(0, introT - dt);
   if (state === 'play') updatePlayer(dt);
-  updateEnts(dt); updateBoss(dt); updateProjs(dt); updateToms(dt); updateWaves(dt); updateAkis(dt); updateLoose(dt); updateParts(dt);
+  updateEnts(dt); updateBoss(dt); updateProjs(dt); updateToms(dt); updateWaves(dt); updateAkis(dt); updateBeers(dt); updateLoose(dt); updateParts(dt);
   if (state === 'play') checkInteractions();
   if (state === 'bossdown') { bossDownT -= dt; if (bossDownT <= 0) showEnding(); }
   if (state === 'play' || state === 'bossdown') updateCam(dt);
@@ -1239,7 +1285,7 @@ function step(dt){
     tauntT -= dt;
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
-  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : akiMode() ? 'AKI' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
+  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : akiMode() ? 'AKI' : beerMode() ? 'BARRIL' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
   if (taunt && !taunt.big) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
 }
 let last = performance.now(), acc = 0;
@@ -1451,7 +1497,7 @@ function drawProjs(){
     }
     ctx.fillStyle = '#ff5cc6'; ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill(); R(ctx, '#fff', q.x - 2, q.y - 2, 3, 3);
   }
-  drawWaves();
+  drawWaves(); drawBeers();
   for (const m of akis) { ctx.save(); ctx.translate(Math.round(m.x), Math.round(m.y)); ctx.scale(m.dir * 1.3, 1.3); ctx.rotate((m.t / m.T) * Math.PI * 2); drawAki(ctx); ctx.restore(); }   // voltereta hacia adelante: la cabeza baja primero, en el sentido en que avanza
   for (const f of slashes) {                                                                   // zarpazo: tres rayas
     const k = f.t / .32; ctx.globalAlpha = 1 - k; ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineWidth = 4;
@@ -1482,10 +1528,13 @@ function drawPlayer(){
   const look = H ? { ...H.look, hair:H.hair, shirt:H.shirt, logo:H.col } : {};
   let back = null, front = null;
   const call = p.akiT > 0 && pose !== 'hang';
+  const beerWind = p.beerT > BEER_SPRAY && pose !== 'hang', beerSpray = p.beerT > 0 && p.beerT <= BEER_SPRAY && pose !== 'hang';
   const plant = p.waveT > 0 && pose !== 'hang';
   if (plant) pose = 'crouch';
   const lift = p.tomT > 0 && pose !== 'hang';                      // Rodrigo con el tom sobre la cabeza
-  if (call) front = g => { g.save(); g.translate(18, 38 - Math.round(Math.sin(p.akiT * 40) * 1.5)); drawAki(g); g.restore(); };   // Sergio saca a Aki
+  if (beerWind) front = g => { g.save(); g.translate(2, -12 + Math.round((p.beerT - BEER_SPRAY) / BEER_WIND * 6)); drawBarrel(g); g.restore(); };   // barril sobre la cabeza
+  else if (beerSpray) front = g => { g.save(); g.translate(14, 18 + Math.round(Math.sin(p.beerT * 70))); drawBarrel(g); g.restore(); };   // barril a la altura del pecho, grifo abierto
+  else if (call) front = g => { g.save(); g.translate(18, 38 - Math.round(Math.sin(p.akiT * 40) * 1.5)); drawAki(g); g.restore(); };   // Sergio saca a Aki
   else if (plant) front = g => { g.save(); g.translate(0, 0); drawGuitar(g, 6, 22 + Math.round(Math.sin(p.waveT * 90) * 1.5), 0, col, 32); g.restore(); };
   else if (lift) front = g => { g.save(); g.translate(1, -12 + Math.round(p.tomT / TOM_WIND * 6)); drawTom(g); g.restore(); };
   else if (atk) front = g => {
@@ -1495,7 +1544,7 @@ function drawPlayer(){
   else if (inst === 'sticks') front = g => drawInstrument(g, H, p.anim);
   else if (inst === 'mic') front = g => { R(g, '#555', 9, 6, 2, 24); R(g, '#bfc4cc', 7, 2, 6, 5); };   // pie de micrófono en la mano
   else back = g => drawGuitar(g, -5, 20, -2.25, col, inst === 'bass' ? 28 : 24);
-  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { ...look, pose, leg, sway, armUp:inst === 'mic' && !atk && pose !== 'hang', armsUp:lift, back, front });
+  drawPerson(ctx, p.x + p.w / 2, p.y + p.h - 44, p.face, { ...look, pose, leg, sway, armUp:inst === 'mic' && !atk && pose !== 'hang', armsUp:lift || beerWind, back, front });
 }
 function drawTaunt(){
   // Globo de diálogo pegado al Silenciador: lo sigue por la pantalla, así sale a su lado izquierdo o derecho.
@@ -1803,6 +1852,6 @@ setTimeout(() => $('menu').classList.remove('intro'), 2200);
 requestAnimationFrame(frame);
 
 // gancho para pruebas
-window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; }, get akis(){ return akis; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
+window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; }, get akis(){ return akis; }, get beers(){ return beers; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
 })();
 </script>
