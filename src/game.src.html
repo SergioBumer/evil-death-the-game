@@ -147,6 +147,9 @@ body.isEnding #rotate{display:none!important}
 #touch button{pointer-events:auto;position:relative;border-radius:50%;border:2px solid rgba(233,220,197,.35);
   background:rgba(20,10,14,.3);color:var(--bone);padding:0;font-size:9px;touch-action:none}
 #touch button.on{background:rgba(212,34,58,.6);border-color:var(--bone)}
+/* recarga del poder: el cráneo encapuchado del logo con un reloj circular */
+#bShout canvas.cd{position:absolute;inset:-2px;width:calc(100% + 4px);height:calc(100% + 4px);border-radius:50%;pointer-events:none}
+#bShout.cooling .lbl{visibility:hidden}
 .pad{position:absolute;left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));
   display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,54px);gap:4px}
 .acts{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));
@@ -270,7 +273,7 @@ body.isEnding #rotate{display:none!important}
     <button data-k="left" aria-label="Izquierda">◀</button><button data-k="down" aria-label="Abajo">▼</button><button data-k="right" aria-label="Derecha">▶</button>
   </div>
   <div class="acts">
-    <button data-k="shout" data-need="5" id="bShout">GRITO</button><button data-k="dash" data-need="2">DASH</button>
+    <button data-k="shout" data-need="5" id="bShout"><span class="lbl">GRITO</span><canvas class="cd" width="124" height="124" hidden></canvas></button><button data-k="dash" data-need="2">DASH</button>
     <button data-k="attack" data-need="0">RIFF</button><button data-k="jump" class="big">SALTO</button>
   </div>
 </div>
@@ -674,7 +677,7 @@ const R = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 
 function newPlayer(pos){
   return { x:pos.x, y:pos.y, w:20, h:44, vx:0, vy:0, face:1, onGround:false, state:'normal', life:maxLife(), invuln:0,
-    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, tomT:0, waveT:0, rollT:0, rollDir:1, rollAng:0, rollHit:null, beerT:0, beerOn:false, slamT:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
+    atkCD:0, atkT:0, dashCD:0, dashT:0, shoutCD:0, shoutCDMax:2.4, tomT:0, waveT:0, rollT:0, rollDir:1, rollAng:0, rollHit:null, beerT:0, beerOn:false, slamT:0, grabCD:0, wjLock:0, coyote:0, jbuf:0, airJumps:0, airDashed:false,
     anim:0, hangDir:1, climbT:0, cx0:0, cy0:0, cx1:0, cy1:0, atkHit:new Set(), dashHit:new Set(), wall:0 };
 }
 
@@ -894,12 +897,12 @@ function updatePlayer(dt){
   }
   // GRITO
   if (pressed('shout') && has(5) && p.shoutCD <= 0) {
-    p.shoutCD = 2.4;
+    p.shoutCD = p.shoutCDMax = 2.4;
     if (tomMode()) { p.tomT = TOM_WIND; SFX.dash(); }                     // Rodrigo levanta el tom; lo suelta al acabar TOM_WIND
     else if (waveMode()) { p.waveT = WAVE_WIND; SFX.dash(); }
     else if (beerMode()) { p.beerT = BEER_WIND + BEER_SPRAY; p.beerOn = false; SFX.dash(); }   // Fabián levanta el barril; lo abre a los BEER_WIND
     else if (leoMode()) startLeap(p);
-    else if (rollMode()) { p.rollT = ROLL_T; p.rollDir = p.face; p.rollHit = new Set(); p.shoutCD = ROLL_T + 2.4; SFX.dash(); }   // Sergio se enrolla y rueda
+    else if (rollMode()) { p.rollT = ROLL_T; p.rollDir = p.face; p.rollHit = new Set(); p.shoutCD = p.shoutCDMax = ROLL_T + 2.4; SFX.dash(); }   // Sergio se enrolla y rueda
     else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); if (hero === 5) say('Me voy, me vooooy'); }   // César grita su frase
   }
   if (p.tomT > 0) { p.tomT -= dt; if (p.tomT <= 0) throwTom(p); }
@@ -1287,7 +1290,7 @@ function step(dt){
     tauntT -= dt;
     if (tauntT <= 0) { taunt = { text:nextTaunt(), t:TAUNT_SHOW }; tauntT = TAUNT_EVERY; SFX.zap(); }
   }
-  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : rollMode() ? 'RODAR' : beerMode() ? 'BARRIL' : leoMode() ? 'GOLPE' : 'GRITO', bS = $('bShout'); if (bS && bS.textContent !== shoutLbl) bS.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
+  const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : rollMode() ? 'RODAR' : beerMode() ? 'BARRIL' : leoMode() ? 'GOLPE' : 'GRITO', bS = $('bShout'), bL = bS && bS.querySelector('.lbl'); if (bL && bL.textContent !== shoutLbl) bL.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
   if (playerSay && (playerSay.t -= dt) <= 0) playerSay = null;
   if (taunt && !taunt.big) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
 }
@@ -1586,7 +1589,53 @@ function wrapText(text, maxW){
   for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }
   if (line) lines.push(line); return lines;
 }
+// Cráneo encapuchado del logo de Evil Death, sonriendo, centrado en (cx, cy) con "radio" r.
+function drawReaper(g, cx, cy, r){
+  const bone = '#e9dcc5', dark = '#0b0507';
+  g.save(); g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(cx, cy - r);                                                  // capucha / túnica
+  g.quadraticCurveTo(cx + r * 1.08, cy - r * .9, cx + r * .9, cy + r * .25); g.lineTo(cx + r * 1.02, cy + r);
+  g.lineTo(cx - r * 1.02, cy + r); g.lineTo(cx - r * .9, cy + r * .25);
+  g.quadraticCurveTo(cx - r * 1.08, cy - r * .9, cx, cy - r); g.closePath();
+  g.fillStyle = '#3a121b'; g.fill(); g.lineWidth = Math.max(1, r * .1); g.strokeStyle = bone; g.stroke();
+  g.beginPath(); g.ellipse(cx, cy + r * .08, r * .6, r * .68, 0, 0, Math.PI * 2); g.fillStyle = dark; g.fill();   // hueco de la capucha
+  g.beginPath(); g.ellipse(cx, cy + r * .02, r * .44, r * .48, 0, 0, Math.PI * 2); g.fillStyle = bone; g.fill();  // calavera
+  g.fillStyle = dark;
+  for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * r * .18, cy - r * .07, r * .12, r * .14, s * .35, 0, Math.PI * 2); g.fill(); }   // cuencas
+  g.fillStyle = '#ff2f4f'; for (const s of [-1, 1]) { g.beginPath(); g.arc(cx + s * r * .17, cy - r * .05, Math.max(.8, r * .04), 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = dark; g.beginPath(); g.moveTo(cx, cy + r * .05); g.lineTo(cx - r * .05, cy + r * .14); g.lineTo(cx + r * .05, cy + r * .14); g.fill();   // nariz
+  g.strokeStyle = dark; g.lineWidth = Math.max(1, r * .07); g.lineCap = 'round';
+  g.beginPath(); g.arc(cx, cy + r * .08, r * .27, Math.PI * .15, Math.PI * .85); g.stroke();                       // sonrisa
+  g.lineWidth = Math.max(.8, r * .04);
+  for (let k = -2; k <= 2; k++) { const a = Math.PI / 2 + k * .22; g.beginPath(); g.moveTo(cx + Math.cos(a) * r * .2, cy + r * .08 + Math.sin(a) * r * .2); g.lineTo(cx + Math.cos(a) * r * .33, cy + r * .08 + Math.sin(a) * r * .33); g.stroke(); }   // dientes
+  g.restore();
+}
+// Reloj de recarga: frac = fracción que falta (1 → recién usado, 0 → listo). La parte que falta se ve oscura y el aro rojo se llena.
+function drawCooldown(g, cx, cy, r, frac){
+  frac = Math.max(0, Math.min(1, frac)); const top = -Math.PI / 2, done = (1 - frac) * Math.PI * 2;
+  g.save(); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
+  g.fillStyle = '#140609'; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+  drawReaper(g, cx, cy + r * .06, r * .74);
+  g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, r, top + done, top + Math.PI * 2); g.closePath(); g.fillStyle = 'rgba(0,0,0,.55)'; g.fill();   // lo que falta
+  g.restore();
+  g.save(); g.lineCap = 'round';
+  g.beginPath(); g.arc(cx, cy, r * .9, 0, Math.PI * 2); g.strokeStyle = 'rgba(233,220,197,.18)'; g.lineWidth = r * .14; g.stroke();
+  if (done > .01) { g.beginPath(); g.arc(cx, cy, r * .9, top, top + done); g.strokeStyle = '#ff2f4f'; g.stroke(); }                    // aro que se recarga
+  const hx = cx + Math.cos(top + done) * r * .9, hy = cy + Math.sin(top + done) * r * .9;
+  g.beginPath(); g.arc(hx, hy, r * .12, 0, Math.PI * 2); g.fillStyle = '#ffe14d'; g.fill();                                      // punta del reloj
+  g.restore();
+}
+// Botón táctil del poder: mientras recarga muestra el cráneo con el reloj en vez del texto.
+function updateShoutBtn(){
+  const b = $('bShout'); if (!b || !P) return;
+  const cv2 = b.querySelector('canvas.cd'), cooling = state === 'play' && P.shoutCD > 0;
+  b.classList.toggle('cooling', cooling); cv2.hidden = !cooling;
+  if (!cooling) return;
+  const g = cv2.getContext('2d'); g.clearRect(0, 0, 124, 124);
+  drawCooldown(g, 62, 62, 60, P.shoutCD / (P.shoutCDMax || 2.4));
+}
 function drawHUD(pal){
+  updateShoutBtn();
   for (let i = 0; i < maxLife(); i++) drawHeart(16 + i * 26, 14, i < P.life, i >= BASE_LIFE);
   ctx.font = '8px "Press Start 2P", monospace'; ctx.fillStyle = '#a3949a';
   ctx.fillText(`${cur + 1} · ${LEVEL_META[cur].name.toUpperCase()}`, 16, 50);
@@ -1595,7 +1644,7 @@ function drawHUD(pal){
     R(ctx, '#000', x, y, 32, 32); R(ctx, i < powers ? '#1d1317' : '#0d0a0c', x + 2, y + 2, 28, 28);
     if (i < powers) {
       drawItem(ctx, i, x + 16, y + 16);
-      if (i === 5 && P.shoutCD > 0) { ctx.globalAlpha = .7; R(ctx, '#000', x + 2, y + 2, 28, 28 * Math.min(1, P.shoutCD / 2.4)); ctx.globalAlpha = 1; }
+      if (i === 5 && P.shoutCD > 0) drawCooldown(ctx, x + 16, y + 16, 15, P.shoutCD / (P.shoutCDMax || 2.4));   // recargando: cráneo + reloj
     } else { ctx.fillStyle = '#3a262d'; ctx.fillText('?', x + 12, y + 21); }
   }
   // cartel cercano
