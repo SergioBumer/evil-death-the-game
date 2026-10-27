@@ -540,6 +540,7 @@ const diffTxt = v => 'x' + v.toFixed(1).replace('.', ',');
 function persist(){ try { localStorage.setItem('evildeath_gira', JSON.stringify(save)); } catch(e) {} }
 
 /* ============ ENTRADA ============ */
+const VIDEO = window.__VIDEO || null;   // modo video (ver videoStep)
 const keys = {}, hit = {};
 const KEYMAP = { ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',
   KeyZ:'jump',Space:'jump',KeyK:'jump',KeyX:'attack',KeyJ:'attack',KeyC:'dash',ShiftLeft:'dash',ShiftRight:'dash',KeyL:'dash',
@@ -828,7 +829,7 @@ function nextDeathLine(){
 }
 // Globito sobre el personaje del jugador (por ahora: la frase de César al gritar).
 let playerSay = null;
-const say = (text, t = 1.5) => { playerSay = { text, t, show:t }; };
+const say = (text, t = 1.5, owner = P) => { playerSay = { text, t, show:t, owner }; };
 let taunt = null, tauntT = TAUNT_FIRST, tauntBag = [], tauntLow = false, lastTaunt = '';
 function nextTaunt(){
   const low = !!(boss && boss.hp <= boss.max * TAUNT_LOW_PCT);
@@ -854,7 +855,7 @@ let ents = [], parts = [], projs = [], eprojs = [], toms = [], waves = [], beers
 const loose = new Map(), gateAnim = new Map();
 let P = null, spawn = null, checkpoint = null, lastSafe = null;
 const cam = { x:0, y:0 };
-let diedByAttack = false, shake = 0, introT = 0, deadT = 0, time = 0, bossDownT = 0, flashT = 0, shoutFx = null, bg = null, menuPal = 0;
+let diedByAttack = false, shake = 0, introT = 0, deadT = 0, time = 0, bossDownT = 0, flashT = 0, shoutFxs = [], bg = null, menuPal = 0;
 const embers = Array.from({ length:46 }, () => ({ x:Math.random() * VW, y:Math.random() * VH, v:12 + Math.random() * 30, s:1 + Math.random() * 2, p:Math.random() * 6 }));
 
 const has = k => powers > k;
@@ -881,7 +882,7 @@ function loadLevel(i){
   cur = i; const d = LEVEL_DATA[i];
   H = d.rows.length; W = Math.max(...d.rows.map(r => r.length));
   grid = d.rows.map(r => r.padEnd(W, '.').split(''));
-  ents = []; parts = []; projs = []; eprojs = []; toms = []; waves = []; beers = []; loose.clear(); gateAnim.clear(); boss = null; shoutFx = null;
+  ents = []; parts = []; projs = []; eprojs = []; toms = []; waves = []; beers = []; loose.clear(); gateAnim.clear(); boss = null; shoutFxs = [];
   signs = d.signs.map(s => ({ x:s[0], y:s[1], text:s[2] }));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = grid[y][x], px = x * TS, py = y * TS;
@@ -1102,13 +1103,13 @@ function updatePlayer(dt){
   }
   if (p.beerT > 0) {
     p.beerT -= dt;
-    if (!p.beerOn && p.beerT <= BEER_SPRAY) { p.beerOn = true; beers.push({ t:0, dir:p.face, hit:new Set(), len:0 }); SFX.beer(); }
+    if (!p.beerOn && p.beerT <= BEER_SPRAY) { p.beerOn = true; beers.push({ t:0, dir:p.face, hit:new Set(), len:0, owner:p }); SFX.beer(); }
     if (p.beerT <= 0) p.beerOn = false;
   }
 }
 // Efecto del grito en (cx, cy) con alcance RAD: lo usan el grito gutural y el impacto del tom.
 function shoutBlast(cx, cy, RAD){
-  shoutFx = { x:cx, y:cy, t:0, rad:RAD }; shake = 16;
+  shoutFxs.push({ x:cx, y:cy, t:0, rad:RAD }); shake = 16;
   for (const e of ents) if ((e.t === 'E' || e.t === 'F') && !e.dead && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < RAD) damage(e, 99, Math.sign(e.x - cx) || 1);
   for (let ty = Math.floor((cy - RAD) / TS); ty <= Math.floor((cy + RAD) / TS); ty++)
     for (let tx = Math.floor((cx - RAD) / TS); tx <= Math.floor((cx + RAD) / TS); tx++)
@@ -1187,7 +1188,7 @@ function leoSlam(p){
 // Fabián: chorro de cerveza a presión en horizontal. Sale del grifo del barril y sigue a Fabián mientras dura.
 function updateBeers(dt){
   beers = beers.filter(b => {
-    b.t += dt; const p = P;
+    b.t += dt; const p = b.owner || P;
     if (state !== 'play') return false;
     p.face = b.dir;
     const ox = p.x + p.w / 2 + b.dir * 30, oy = p.y + p.h - 26;
@@ -1230,7 +1231,7 @@ function drawTom(g){
 }
 
 function hurt(n, respawn, kdir){
-  if (P.invuln > 0 || state !== 'play') return;
+  if (P.invuln > 0 || state !== 'play' || (VIDEO && VIDEO.god)) return;
   P.life -= n; SFX.hurt(); shake = Math.max(shake, 10); flashT = .35;
   burst(P.x + P.w / 2, P.y + 20, '#d4223a', 10, 200);
   if (P.life <= 0) { if (cur === 6 && boss && !boss.dead) bossNextPct = bossRecoverPct(Math.max(0, boss.hp) / boss.max);
@@ -1402,7 +1403,7 @@ function updateParts(dt){
   for (const q of parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += G * q.g * dt * .5; q.life -= dt; }
   parts = parts.filter(q => q.life > 0);
   for (const [k, v] of gateAnim) gateAnim.set(k, Math.min(1, v + dt * 1.8));
-  if (shoutFx) { shoutFx.t += dt; if (shoutFx.t > .55) shoutFx = null; }
+  shoutFxs = shoutFxs.filter(f => (f.t += dt) <= .55);
 }
 function updateEmbers(dt){
   for (const e of embers) { e.y -= e.v * dt; e.x += Math.sin(time + e.p) * 8 * dt; if (e.y < -5) { e.y = VH + 5; e.x = Math.random() * VW; } }
@@ -1481,6 +1482,24 @@ function step(dt){
   const shoutLbl = tomMode() ? 'TOM' : waveMode() ? 'ONDA' : rollMode() ? 'RODAR' : beerMode() ? 'BARRIL' : leoMode() ? 'GOLPE' : 'GRITO', bS = $('bShout'), bL = bS && bS.querySelector('.lbl'); if (bL && bL.textContent !== shoutLbl) bL.textContent = shoutLbl;   // Rodrigo en el jefe: lanza un tom
   if (playerSay && (playerSay.t -= dt) <= 0) playerSay = null;
   if (taunt && !taunt.big) { taunt.t -= dt; if (taunt.t <= 0 || state !== 'play' || !boss || boss.dead) taunt = null; }
+}
+/* Modo video: solo lo activa la herramienta que renderiza el videoclip (window.__VIDEO). Varios personajes (actores) juegan a la
+   vez con entradas guionadas; el mundo se actualiza una sola vez por cuadro. Para quien juega no cambia nada. */
+function videoStep(dt){
+  time += dt; introT = 0;
+  const kp = P, kh = hero;
+  for (const a of VIDEO.actors) {
+    P = a.p; hero = a.hero;
+    for (const k in keys) keys[k] = false; Object.assign(keys, a.keys || {});
+    for (const k in hit) hit[k] = false; Object.assign(hit, a.hit || {}); a.hit = {};
+    updatePlayer(dt); checkInteractions();
+  }
+  P = VIDEO.target || kp; hero = kh; for (const k in hit) hit[k] = false;
+  updateEnts(dt); updateBoss(dt); updateProjs(dt); updateToms(dt); updateWaves(dt); updateBeers(dt); updateParts(dt); updateEmbers(dt);
+  if (state === 'bossdown') bossDownT -= dt;
+  shake = Math.max(0, shake - dt * 30); flashT = Math.max(0, flashT - dt);
+  if (popup) { popup.t -= dt; if (popup.t <= 0) popup = null; }
+  if (playerSay && (playerSay.t -= dt) <= 0) playerSay = null;
 }
 let last = performance.now(), acc = 0;
 const STEP = 1 / 60;
@@ -1761,7 +1780,7 @@ function drawTaunt(){
 function drawSay(){
   // Globito blanco sobre la cabeza del jugador, con la colita hacia él; sale con un pequeño rebote y se desvanece al final.
   const age = playerSay.show - playerSay.t, a = Math.min(1, age / .08, playerSay.t / .3), pop = 1 + Math.max(0, .12 - age) * 1.5;
-  const px = P.x + P.w / 2 - cam.x, py = P.y - cam.y - 10;
+  const o = playerSay.owner || P, px = o.x + o.w / 2 - cam.x, py = o.y - cam.y - 10;
   ctx.font = '26px VT323, monospace';
   const tw = Math.ceil(ctx.measureText(playerSay.text).width), bw = tw + 22, bh = 30;
   const bx = Math.max(8, Math.min(VW - bw - 8, px - bw / 2)), by = py - bh - 12, tx = Math.max(bx + 14, Math.min(bx + bw - 14, px));
@@ -1822,6 +1841,12 @@ function updateShoutBtn(){
   const g = cv2.getContext('2d'); g.clearRect(0, 0, 124, 124);
   drawCooldown(g, 62, 62, 60, P.shoutCD / (P.shoutCDMax || 2.4));
 }
+function drawBossBar(){
+  if (!boss || boss.dead) return;
+  const w = 360, x = VW / 2 - w / 2, y = VH - 34;
+  ctx.font = '8px "Press Start 2P", monospace'; ctx.fillStyle = '#ff5cc6'; ctx.textAlign = 'center'; ctx.fillText('EL SILENCIADOR', VW / 2, y - 8); ctx.textAlign = 'left';
+  R(ctx, '#000', x - 2, y - 2, w + 4, 14); R(ctx, '#3a262d', x, y, w, 10); R(ctx, '#ff5cc6', x, y, w * Math.max(0, boss.hp / boss.max), 10);
+}
 function drawHUD(pal){
   updateShoutBtn();
   for (let i = 0; i < maxLife(); i++) drawHeart(16 + i * 26, 14, i < P.life, i >= BASE_LIFE);
@@ -1844,7 +1869,8 @@ function drawHUD(pal){
       ctx.fillStyle = '#efe6df'; lines.forEach((l, i) => ctx.fillText(l, x + 18, y + 30 + i * 24));
     }
   }
-  if (boss && !boss.dead) {
+  drawBossBar();
+  if (false) {
     const w = 360, x = VW / 2 - w / 2, y = VH - 34;
     ctx.font = '8px "Press Start 2P", monospace'; ctx.fillStyle = '#ff5cc6'; ctx.textAlign = 'center'; ctx.fillText('EL SILENCIADOR', VW / 2, y - 8); ctx.textAlign = 'left';
     R(ctx, '#000', x - 2, y - 2, w + 4, 14); R(ctx, '#3a262d', x, y, w, 10); R(ctx, '#ff5cc6', x, y, w * Math.max(0, boss.hp / boss.max), 10);
@@ -1899,16 +1925,19 @@ function render(){
   drawTiles(cx, cy, pal);
   for (const s of signs) { const x = s.x * TS, y = s.y * TS; R(ctx, '#4a3020', x + 14, y + 14, 4, 18); R(ctx, '#6b4a2a', x + 3, y + 3, 26, 14); R(ctx, '#e9dcc5', x + 15, y + 5, 2, 7); R(ctx, '#e9dcc5', x + 15, y + 13, 2, 2); }
   drawEnts(); drawBoss(); drawProjs();
-  if (state !== 'dead') drawPlayer();
+  if (state !== 'dead') {
+    if (VIDEO && VIDEO.actors) { const kp = P, kh = hero; for (const a of VIDEO.actors) { P = a.p; hero = a.hero; drawPlayer(); } P = kp; hero = kh; }
+    else drawPlayer();
+  }
   for (const q of parts) { ctx.globalAlpha = Math.max(0, q.life / q.max); R(ctx, q.c, q.x, q.y, q.w, q.h); }
   ctx.globalAlpha = 1;
-  if (shoutFx) {
+  for (const shoutFx of shoutFxs) {
     const k = shoutFx.t / .55;
     for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(255,47,79,${(1 - k) * (1 - i * .25)})`; ctx.lineWidth = 6 - i * 2; const rr = (shoutFx.rad || SHOUT_RAD) * k - i * 26; if (rr <= 0) continue; ctx.beginPath(); ctx.arc(shoutFx.x, shoutFx.y, rr, 0, Math.PI * 2); ctx.stroke(); }
   }
   ctx.restore();
   drawEmbers(pal.acc);
-  drawHUD(pal);
+  if (VIDEO) drawBossBar(); else drawHUD(pal);
   if (popup && state === 'play') {
     // en la pelea final va más abajo, entre el Silenciador y las plataformas, para no taparle la cara
     const k = popup.scale || 1, py = (cur === 6 ? 250 : 104 * k) - Math.max(0, 1 - popup.t) * 10;
@@ -2104,7 +2133,7 @@ setTimeout(() => $('menu').classList.remove('intro'), 2200);
 requestAnimationFrame(frame);
 
 // gancho para pruebas
-window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; },  get say(){ return playerSay; }, get beers(){ return beers; }, get shoutFx(){ return shoutFx; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
+window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; },  get say(){ return playerSay; }, videoStep, render, newPlayer, cam, clampCam, sayAs:say, set P(v){ P = v; }, set hero(v){ hero = v; }, set popup(v){ popup = v; }, set shake(v){ shake = v; }, set flashT(v){ flashT = v; }, bossDamage, get time(){ return time; }, get beers(){ return beers; }, get shoutFx(){ return shoutFxs[shoutFxs.length - 1] || null; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
 })();
 </script>
 
