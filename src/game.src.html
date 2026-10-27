@@ -1571,7 +1571,7 @@ function drawPlayer(){
 function drawTaunt(){
   // Globo de diálogo pegado al Silenciador: lo sigue por la pantalla, así sale a su lado izquierdo o derecho.
   const age = (taunt.show || TAUNT_SHOW) - taunt.t, a = Math.min(1, age / .15, taunt.t / .35), pop = 1 + Math.max(0, .15 - age) * 1.2;
-  const bsx = boss.x + boss.w / 2 - cam.x, bsy = boss.y + boss.h - cam.y;
+  const z = (VIDEO && VIDEO.zoom) || 1, bsx = (boss.x + boss.w / 2 - cam.x) * z, bsy = (boss.y + boss.h - cam.y) * z;
   const fs = taunt.big ? 40 : 27, font = `${fs}px VT323, monospace`;   // big: al morir en celular (juego quieto), letra más grande
   ctx.font = font;
   const bw = Math.min(taunt.big ? 620 : 324, VW - 32), lines = wrapText(taunt.text, bw - 26), lh = fs;
@@ -1592,7 +1592,7 @@ function drawTaunt(){
 function drawSay(){
   // Globito blanco sobre la cabeza del jugador, con la colita hacia él; sale con un pequeño rebote y se desvanece al final.
   const age = playerSay.show - playerSay.t, a = Math.min(1, age / .08, playerSay.t / .3), pop = 1 + Math.max(0, .12 - age) * 1.5;
-  const o = playerSay.owner || P, px = o.x + o.w / 2 - cam.x, py = o.y - cam.y - 10;
+  const z = (VIDEO && VIDEO.zoom) || 1, o = playerSay.owner || P, px = (o.x + o.w / 2 - cam.x) * z, py = (o.y - cam.y) * z - 10;
   ctx.font = '26px VT323, monospace';
   const tw = Math.ceil(ctx.measureText(playerSay.text).width), bw = tw + 22, bh = 30;
   const bx = Math.max(8, Math.min(VW - bw - 8, px - bw / 2)), by = py - bh - 12, tx = Math.max(bx + 14, Math.min(bx + bw - 14, px));
@@ -1732,6 +1732,8 @@ function render(){
   if (state === 'ending') { drawEnding(); return; }
   const pal = LEVEL_META[cur].pal;
   const cx = Math.round(cam.x + (Math.random() - .5) * shake), cy = Math.round(cam.y + (Math.random() - .5) * shake);
+  const z = (VIDEO && VIDEO.zoom) || 1;                 // modo video: la cámara puede acercarse
+  if (z !== 1) { ctx.save(); ctx.scale(z, z); }
   drawBg(cx, cy, pal);
   ctx.save(); ctx.translate(-cx, -cy);
   drawTiles(cx, cy, pal);
@@ -1748,6 +1750,7 @@ function render(){
     for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(255,47,79,${(1 - k) * (1 - i * .25)})`; ctx.lineWidth = 6 - i * 2; const rr = (shoutFx.rad || SHOUT_RAD) * k - i * 26; if (rr <= 0) continue; ctx.beginPath(); ctx.arc(shoutFx.x, shoutFx.y, rr, 0, Math.PI * 2); ctx.stroke(); }
   }
   ctx.restore();
+  if (z !== 1) ctx.restore();
   drawEmbers(pal.acc);
   if (VIDEO) drawBossBar(); else drawHUD(pal);
   if (popup && state === 'play') {
