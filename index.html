@@ -1092,7 +1092,7 @@ function updatePlayer(dt){
     else if (beerMode()) { p.beerT = BEER_WIND + BEER_SPRAY; p.beerOn = false; SFX.dash(); }   // Fabián levanta el barril; lo abre a los BEER_WIND
     else if (leoMode()) startLeap(p);
     else if (rollMode()) { p.rollT = ROLL_T; p.rollDir = p.face; p.rollHit = new Set(); p.shoutCD = p.shoutCDMax = ROLL_T + 2.4; SFX.dash(); }   // Sergio se enrolla y rueda
-    else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); if (hero === 5) say('Me voy, me vooooy'); }   // César grita su frase
+    else { SFX.shout(); shoutBlast(p.x + p.w / 2, p.y + p.h / 2, SHOUT_RAD); if (hero === 5 && !(VIDEO && VIDEO.noSay)) say('Me voy, me vooooy'); }   // César grita su frase
   }
   if (p.tomT > 0) { p.tomT -= dt; if (p.tomT <= 0) throwTom(p); }
   if (p.waveT > 0) { p.waveT -= dt; if (p.waveT <= 0) launchWave(p); }
@@ -1442,6 +1442,8 @@ function checkInteractions(){
     } else if (e.t === 'V') {
       e.dead = true; save.blue[e.id] = true; persist(); p.life = Math.min(maxLife(), p.life + 1); SFX.item(); popup = { text:'¡VIDA EXTRA!', t:2.4, color:'#7fc4ff' };
       burst(e.x + 8, e.y + 8, '#5ab4ff', 24, 260); shake = Math.max(shake, 5);
+    } else if (e.t === 'M' && VIDEO) {                     // modo video: el rescate lo muestra el director, sin tarjeta HTML
+      if (!e.rescued) { e.rescued = true; SFX.item(); burst(e.x + 14, e.y, BAND[cur].col, 30, 300); if (VIDEO.onRescue) VIDEO.onRescue(cur); }
     } else if (e.t === 'M') { reachMusician(); return; }
   }
 }
@@ -1500,6 +1502,7 @@ function videoStep(dt){
   shake = Math.max(0, shake - dt * 30); flashT = Math.max(0, flashT - dt);
   if (popup) { popup.t -= dt; if (popup.t <= 0) popup = null; }
   if (playerSay && (playerSay.t -= dt) <= 0) playerSay = null;
+  if (taunt && (taunt.t -= dt) <= 0) taunt = null;
 }
 let last = performance.now(), acc = 0;
 const STEP = 1 / 60;
@@ -2136,7 +2139,7 @@ setTimeout(() => $('menu').classList.remove('intro'), 2200);
 requestAnimationFrame(frame);
 
 // gancho para pruebas
-window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; },  get say(){ return playerSay; }, videoStep, render, newPlayer, cam, clampCam, sayAs:say, set P(v){ P = v; }, set hero(v){ hero = v; }, set popup(v){ popup = v; }, set shake(v){ shake = v; }, set flashT(v){ flashT = v; }, bossDamage, get time(){ return time; }, get beers(){ return beers; }, get shoutFx(){ return shoutFxs[shoutFxs.length - 1] || null; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
+window.__gira = { Song, Music, get AC(){ return AC; }, loadLevel, tick:n => { for (let i = 0; i < n; i++) { step(STEP); clearHits(); } }, get state(){ return state; }, set state(v){ state = v; }, get P(){ return P; }, keys, hit, get ents(){ return ents; }, set ents(v){ ents = v; }, get boss(){ return boss; }, get powers(){ return powers; }, set powers(v){ powers = v; }, save, showEnding, get taunt(){ return taunt; }, setHero, get hero(){ return hero; }, get toms(){ return toms; }, get waves(){ return waves; },  get say(){ return playerSay; }, videoStep, render, newPlayer, cam, clampCam, sayAs:say, set P(v){ P = v; }, set hero(v){ hero = v; }, set popup(v){ popup = v; }, set shake(v){ shake = v; }, set flashT(v){ flashT = v; }, bossDamage, get time(){ return time; }, tileAt, isSolid, BAND, LEVEL_META, mapSize:() => ({ w:W * TS, h:H * TS + padBottom() }), set taunt(v){ taunt = v; }, get beers(){ return beers; }, get shoutFx(){ return shoutFxs[shoutFxs.length - 1] || null; }, get deathLine(){ return deathLine; }, hurt, get P2(){ return P; } };
 })();
 </script>
 
